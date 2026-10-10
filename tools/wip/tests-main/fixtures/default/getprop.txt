@@ -1,0 +1,9 @@
+ro.product.manufacturer=Xiaomi
+ro.product.model=Redmi Note 9 Pro
+ro.product.device=joyeuse
+ro.build.version.release=12
+ro.build.version.sdk=31
+ro.build.version.security_patch=2023-06-01
+ro.build.version.incremental=V14.0.3.0.SJZMIXM
+ro.miui.ui.version.name=V140
+ro.miui.ui.version.code=14

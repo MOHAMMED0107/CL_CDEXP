@@ -1,0 +1,4 @@
+# pkg|what "appops get <pkg> REQUEST_INSTALL_PACKAGES" prints (apps not listed: "No operations.")
+org.telegram.messenger|REQUEST_INSTALL_PACKAGES: allow; time=+12d4h22m10s317ms ago
+com.sys.monitor.helper|REQUEST_INSTALL_PACKAGES: allow; time=+1d1h3m55s12ms ago
+com.whatsapp|REQUEST_INSTALL_PACKAGES: deny; rejectTime=+40d2h1m3s9ms ago

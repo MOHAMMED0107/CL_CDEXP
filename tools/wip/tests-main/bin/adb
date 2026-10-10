@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+# Fake adb for the phone-pro.sh options 1-13 regression tests (tests-main/run-tests.sh).
+# It pretends to be a Xiaomi Redmi Note 9 Pro (MIUI 14, Android 12, not rooted) on USB and answers
+# every command options 1-13 send. Anything else is written to $FAKE_STATE/unknown and fails like an
+# unknown shell command, so the tests notice when phone-pro.sh starts sending something new.
+# Works with bash 3.2 (macOS) as well as newer bash.
+#
+# Environment:
+#   FAKE_STATE     (required) folder holding the fake phone's state. It is filled from the fixtures
+#                  on first use, so several runs inside one test talk to the same phone.
+#   FAKE_FIXTURES  fixtures root (default: <this folder>/../fixtures)
+#   FAKE_SCENARIO  overlay: a file in $FAKE_FIXTURES/<scenario>/ replaces the one in default/;
+#                  a file named <name>.absent hides <name> from default/.
+#   FAKE_FLAGS     space-separated switches:
+#     NO_DEVICE               nothing plugged in
+#     UNAUTHORIZED            plugged in, but the "Allow USB debugging" prompt was not accepted
+#     REFUSE_SETTINGS         MIUI without "USB debugging (Security settings)": settings put throws
+#                             SecurityException (exit 255) and nothing changes
+#     REFUSE_SETTINGS_SILENT  same, but settings put exits 0 without a word and nothing changes
+#     SYSFS_DENIED            cat of /sys/class/power_supply files: Permission denied (SELinux)
+#     PKGDUMP_NO_PACKAGES     "dumpsys package packages" prints no "Package [" blocks
+#
+# State files in $FAKE_STATE:
+#   global.txt secure.txt  settings, one key=value per line
+#   packages.txt           pkg|type|installer|status  (type s=system 3=user-installed;
+#                          status I=installed, U=removed for user 0 (restorable), D=deleted)
+#   changes                every command that changed the phone, one per line
+#   calls                  every adb invocation (arguments joined by spaces)
+#   pulls                  "remote<TAB>local" for each successful adb pull
+#   unknown                commands this fake does not know
+# Like real adb on a pty, "adb shell" output uses \r\n line endings.
+set -u
+
+HERE=$(cd "$(dirname "$0")" && pwd)
+FIX=${FAKE_FIXTURES:-$HERE/../fixtures}
+SCN=${FAKE_SCENARIO:-default}
+ST=${FAKE_STATE:?FAKE_STATE not set}
+FLAGS=" ${FAKE_FLAGS:-} "
+SERIAL=d4e1a7c9
+
+mkdir -p "$ST"
+for f in changes calls pulls unknown; do [ -e "$ST/$f" ] || : >"$ST/$f"; done
+printf '%s\n' "$*" >>"$ST/calls"
+
+flag() { case "$FLAGS" in *" $1 "*) return 0 ;; esac; return 1; }
+crlf() { awk '{ printf "%s\r\n", $0 }'; }
+# Path of fixture $1 for the current scenario (may not exist).
+fx() {
+  if [ -e "$FIX/$SCN/$1.absent" ]; then echo "$FIX/$SCN/$1.absent-missing"
+  elif [ -e "$FIX/$SCN/$1" ]; then echo "$FIX/$SCN/$1"
+  else echo "$FIX/default/$1"; fi
+}
+# Print fixture $1 with \r\n endings (nothing if it does not exist).
+fxcat() { f=$(fx "$1"); [ -f "$f" ] && crlf <"$f"; return 0; }
+unknown() {
+  printf '%s\n' "$1" >>"$ST/unknown"
+  echo "/system/bin/sh: $1: inaccessible or not found" >&2
+  exit 127
+}
+
+init_state() {
+  if [ ! -f "$ST/packages.txt" ]; then
+    f=$(fx packages.txt)
+    if [ -f "$f" ]; then
+      awk -F'|' '/^#/ || NF < 3 { next } { print $1 "|" $2 "|" $3 "|" (NF >= 4 && $4 != "" ? $4 : "I") }' "$f" >"$ST/packages.txt"
+    else
+      : >"$ST/packages.txt"
+    fi
+  fi
+  for ns in global secure; do
+    if [ ! -f "$ST/$ns.txt" ]; then
+      f=$(fx "settings_$ns.txt")
+      if [ -f "$f" ]; then grep -v '^#' "$f" | grep '=' >"$ST/$ns.txt"; else : >"$ST/$ns.txt"; fi
+    fi
+  done
+}
+
+# ---------- adb options and host-side commands ----------
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -d|-e) shift ;;
+    -s|-t) shift 2 ;;
+    *) break ;;
+  esac
+done
+[ $# -gt 0 ] || { echo "adb: usage: no command specified" >&2; exit 1; }
+cmd=$1
+shift
+
+case "$cmd" in
+  devices)
+    echo "List of devices attached"
+    if flag NO_DEVICE; then :
+    elif flag UNAUTHORIZED; then printf '%s\tunauthorized\n' "$SERIAL"
+    else printf '%s\tdevice\n' "$SERIAL"; fi
+    echo
+    exit 0 ;;
+  start-server|version)
+    exit 0 ;;
+esac
+
+if flag NO_DEVICE; then
+  case "$cmd" in
+    get-state) echo "error: no devices/emulators found" >&2 ;;
+    *) echo "adb: no devices/emulators found" >&2 ;;
+  esac
+  exit 1
+fi
+if flag UNAUTHORIZED; then
+  echo "error: device unauthorized." >&2
+  echo "This adb server's \$ADB_VENDOR_KEYS is not set" >&2
+  echo "Try 'adb kill-server' if that seems wrong." >&2
+  echo "Otherwise check for a confirmation dialog on your device." >&2
+  exit 1
+fi
+
+init_state
+
+case "$cmd" in
+  get-state)
+    echo device
+    exit 0 ;;
+  pull)
+    [ $# -eq 2 ] || unknown "pull $*"
+    remote=$1 local=$2
+    rel=${remote#/sdcard/}
+    src=$(fx sdcard)/$rel
+    if [ "$rel" = "$remote" ] || [ -z "$rel" ] || [ ! -e "$src" ]; then
+      echo "adb: error: failed to stat remote object '$remote': No such file or directory" >&2
+      exit 1
+    fi
+    if [ -d "$local" ]; then dest="$local/$(basename "$remote")"; else dest=$local; fi
+    mkdir -p "$(dirname "$dest")"
+    if [ -d "$src" ]; then
+      mkdir -p "$dest"
+      (cd "$src" && tar cf - .) | (cd "$dest" && tar xf -)
+    else
+      cp "$src" "$dest"
+    fi
+    n=$(find "$src" -type f | wc -l | tr -d ' ')
+    bytes=$(find "$src" -type f -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
+    printf '%s\t%s\n' "$remote" "$local" >>"$ST/pulls"
+    echo "$remote/: $n files pulled, 0 skipped. 18.4 MB/s ($bytes bytes in 0.021s)"
+    exit 0 ;;
+  shell)
+    ;;
+  *)
+    unknown "$cmd $*" ;;
+esac
+
+# ---------- adb shell: adb joins the arguments with spaces and the phone's sh runs the result ----------
+line="$*"
+
+# Commands sent as one quoted string by phone-pro.sh (matched exactly).
+C_APPOPS='for p in $(pm list packages -3 | cut -d: -f2); do echo "$p $(appops get $p REQUEST_INSTALL_PACKAGES)"; done'
+C_BATSTATS="dumpsys batterystats | grep -i 'battery capacity'"
+
+pkgfield() { awk -F'|' -v p="$1" -v n="$2" '$1 == p { print $n; exit }' "$ST/packages.txt"; }
+setstatus() {
+  awk -F'|' -v p="$1" -v s="$2" 'BEGIN { OFS = "|" } $1 == p { $4 = s } { print }' "$ST/packages.txt" >"$ST/packages.tmp" &&
+    mv "$ST/packages.tmp" "$ST/packages.txt"
+}
+protected() { f=$(fx protected.txt); [ -f "$f" ] && grep -qxF "$1" "$f"; }
+
+pm_list() {
+  sys=0 third=0 inst=0 all=0
+  for a in "$@"; do
+    case "$a" in
+      -s) sys=1 ;; -3) third=1 ;; -i) inst=1 ;; -u) all=1 ;;
+      *) unknown "pm list packages $*" ;;
+    esac
+  done
+  awk -F'|' -v sys=$sys -v third=$third -v inst=$inst -v all=$all '
+    $4 == "I" || (all && $4 == "U") {
+      if (sys && $2 != "s") next
+      if (third && $2 != "3") next
+      printf "package:%s", $1
+      if (inst) printf "  installer=%s", $3
+      printf "\n"
+    }' "$ST/packages.txt" | crlf
+}
+
+settings_get() {
+  ns=$1 key=$2
+  awk -v k="$key" 'index($0, k "=") == 1 { print substr($0, length(k) + 2); found = 1; exit }
+                   END { if (!found) print "null" }' "$ST/$ns.txt" | crlf
+}
+
+settings_put() {
+  ns=$1 key=$2 val=$3
+  if flag REFUSE_SETTINGS; then
+    {
+      echo "Exception occurred while executing 'put':"
+      echo "java.lang.SecurityException: Permission denial: writing to settings requires:android.permission.WRITE_SECURE_SETTINGS"
+      echo "	at com.android.providers.settings.SettingsProvider.enforceWritePermission(SettingsProvider.java:2367)"
+      echo "	at com.android.providers.settings.SettingsProvider.mutateGlobalSetting(SettingsProvider.java:1460)"
+      echo "	at com.android.providers.settings.SettingsProvider.insertGlobalSetting(SettingsProvider.java:1414)"
+      echo "	at com.android.providers.settings.SettingsProvider.call(SettingsProvider.java:446)"
+      echo "	at android.content.ContentProvider.call(ContentProvider.java:2511)"
+      echo "	at com.android.providers.settings.SettingsService\$MyShellCommand.putForUser(SettingsService.java:375)"
+      echo "	at com.android.providers.settings.SettingsService\$MyShellCommand.onCommand(SettingsService.java:277)"
+      echo "	at com.android.modules.utils.BasicShellCommandHandler.exec(BasicShellCommandHandler.java:97)"
+      echo "	at android.os.ShellCommand.exec(ShellCommand.java:38)"
+      echo "	at com.android.providers.settings.SettingsService.onShellCommand(SettingsService.java:49)"
+      echo "	at android.os.Binder.shellCommand(Binder.java:970)"
+      echo "	at android.os.Binder.onTransact(Binder.java:854)"
+      echo "	at android.os.Binder.execTransactInternal(Binder.java:1226)"
+      echo "	at android.os.Binder.execTransact(Binder.java:1163)"
+    } | crlf >&2
+    exit 255
+  fi
+  flag REFUSE_SETTINGS_SILENT && exit 0
+  awk -v k="$key" 'index($0, k "=") != 1' "$ST/$ns.txt" >"$ST/$ns.tmp"
+  printf '%s=%s\n' "$key" "$val" >>"$ST/$ns.tmp"
+  mv "$ST/$ns.tmp" "$ST/$ns.txt"
+  echo "settings put $ns $key $val" >>"$ST/changes"
+}
+
+uninstall() { # $1 = user ("0" or "all"), $2 = package
+  user=$1 pkg=$2
+  status=$(pkgfield "$pkg" 4)
+  type=$(pkgfield "$pkg" 2)
+  if [ "$user" = 0 ]; then
+    if [ "$status" != I ]; then echo "Failure [not installed for 0]" | crlf; exit 1; fi
+    if protected "$pkg"; then echo "Failure [DELETE_FAILED_INTERNAL_ERROR]" | crlf; exit 1; fi
+    setstatus "$pkg" U
+    echo "pm uninstall --user 0 $pkg" >>"$ST/changes"
+  else
+    # Without --user: a system app cannot be removed for all users; an unknown package fails too.
+    if [ "$type" != 3 ] || [ "$status" = D ] || [ -z "$status" ] || protected "$pkg"; then
+      echo "Failure [DELETE_FAILED_INTERNAL_ERROR]" | crlf; exit 1
+    fi
+    setstatus "$pkg" D
+    echo "pm uninstall $pkg" >>"$ST/changes"
+  fi
+  echo "Success" | crlf
+  exit 0
+}
+
+install_existing() {
+  pkg=$1
+  status=$(pkgfield "$pkg" 4)
+  case "$status" in
+    I|U)
+      setstatus "$pkg" I
+      echo "cmd package install-existing $pkg" >>"$ST/changes"
+      echo "Package $pkg installed for user: 0" | crlf
+      exit 0 ;;
+    *)
+      echo "android.content.pm.PackageManager\$NameNotFoundException: Package $pkg doesn't exist" | crlf
+      exit 1 ;;
+  esac
+}
+
+appops_loop() {
+  # What the phone prints for: for each user-installed app, "pkg $(appops get pkg REQUEST_INSTALL_PACKAGES)".
+  f=$(fx appops_install.txt)
+  awk -F'|' '$4 == "I" && $2 == "3" { print $1 }' "$ST/packages.txt" | while read -r p; do
+    out=""
+    [ -f "$f" ] && out=$(awk -F'|' -v p="$p" '$1 == p { print $2; exit }' "$f")
+    if [ -z "$out" ]; then
+      printf '%s No operations.\nDefault mode: default\n' "$p"
+    else
+      printf '%s %s\n' "$p" "$out"
+    fi
+  done | crlf
+}
+
+sysfs_cat() {
+  path=$1
+  name=${path#/sys/class/power_supply/battery/}
+  if [ "$name" = "$path" ]; then unknown "cat $path"; fi
+  f=$(fx "sysfs_$name")
+  if [ ! -f "$f" ]; then echo "cat: $path: No such file or directory" >&2; exit 1; fi
+  if flag SYSFS_DENIED; then echo "cat: $path: Permission denied" >&2; exit 1; fi
+  crlf <"$f"
+}
+
+set -f   # split the command into words without expanding * or ?
+set -- $line
+set +f
+case "$line" in
+  "$C_APPOPS") appops_loop ;;
+  "$C_BATSTATS")
+    f=$(fx batterystats.txt)
+    [ -f "$f" ] || exit 1
+    grep -i 'battery capacity' "$f" | crlf
+    [ "${PIPESTATUS[0]}" = 0 ] || exit 1 ;;
+  "getprop "*)
+    [ $# -eq 2 ] || unknown "$line"
+    f=$(fx getprop.txt)
+    awk -v k="$2" 'index($0, k "=") == 1 { v = substr($0, length(k) + 2) } END { print v }' "$f" | crlf ;;
+  "dumpsys battery") fxcat battery.txt ;;
+  "dumpsys package packages")
+    if flag PKGDUMP_NO_PACKAGES; then echo "" | crlf; else fxcat pkgdump.txt; fi ;;
+  "dumpsys package") fxcat pkgdump_full.txt ;;
+  "dumpsys device_policy") fxcat device_policy.txt ;;
+  "dumpsys usagestats") fxcat usagestats.txt ;;
+  "dumpsys diskstats") fxcat diskstats.txt ;;
+  "df -h /data") fxcat df.txt ;;
+  "date +%Y-%m-%d") fxcat phone_date.txt ;;
+  "pm list packages"|"pm list packages "*) shift 3; pm_list "$@" ;;
+  "settings get "*)
+    [ $# -eq 4 ] || unknown "$line"
+    case "$3" in global|secure) settings_get "$3" "$4" ;; *) unknown "$line" ;; esac ;;
+  "settings put "*)
+    [ $# -eq 5 ] || unknown "$line"
+    case "$3" in global|secure) settings_put "$3" "$4" "$5" ;; *) unknown "$line" ;; esac ;;
+  "pm uninstall --user 0 "*)
+    [ $# -eq 5 ] || unknown "$line"
+    uninstall 0 "$5" ;;
+  "pm uninstall "*)
+    [ $# -eq 3 ] || unknown "$line"
+    uninstall all "$3" ;;
+  "cmd package install-existing "*)
+    [ $# -eq 4 ] || unknown "$line"
+    install_existing "$4" ;;
+  "cat /sys/"*)
+    [ $# -eq 2 ] || unknown "$line"
+    sysfs_cat "$2" ;;
+  *) unknown "$line" ;;
+esac

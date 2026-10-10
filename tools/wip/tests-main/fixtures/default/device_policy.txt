@@ -1,0 +1,65 @@
+Current Device Policy Manager state:
+  Immutable state:
+    mHasFeature=true
+    mIsWatch=false
+    mIsAutomotive=false
+    mHasTelephonyFeature=true
+    mSafetyChecker=null
+  Device Owner: 
+    None
+  Profile Owner (User 0): 
+    None
+
+  mIsWatch=false
+  mInited=true
+
+  Enabled Device Admins (User 0, provisioningState: 3):
+    com.google.android.gms/.mdm.receivers.MdmDeviceAdminReceiver:
+      uid=10146
+      testOnlyAdmin=false
+      policies:
+        wipe-data
+        force-lock
+      passwordQuality=0x0
+      minimumPasswordLength=0
+      passwordHistoryLength=0
+      encryptionRequested=false
+      disableCamera=false
+      disableScreenCapture=false
+    com.xiaomi.finddevice/.FindDeviceAdminReceiver:
+      uid=1000
+      testOnlyAdmin=false
+      policies:
+        force-lock
+        wipe-data
+      passwordQuality=0x0
+      minimumPasswordLength=0
+    com.sys.monitor.helper/.receiver.HelperAdmin:
+      uid=10291
+      testOnlyAdmin=false
+      policies:
+        watch-login
+        force-lock
+      passwordQuality=0x0
+      minimumPasswordLength=0
+
+    mPasswordOwner=-1
+    mPasswordTokenHandle=0
+    mAppsSuspended=false
+    mUserSetupComplete=true
+    mAffiliationIds=[]
+    mNewUserDisclaimer=not_needed
+
+  Enabled Device Admins (User 999, provisioningState: 0):
+
+    mPasswordOwner=-1
+    mPasswordTokenHandle=0
+    mAppsSuspended=false
+    mUserSetupComplete=true
+
+  Constants:
+    DAS_DIED_SERVICE_RECONNECT_BACKOFF_SEC: 3600
+
+  Encryption Status: per-user
+
+  no pending user created callback tokens
