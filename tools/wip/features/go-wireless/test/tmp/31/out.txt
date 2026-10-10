@@ -1,9 +1,0 @@
-== Use the phone over Wi-Fi (no cable) ==
-You are connected over Wi-Fi right now: Redmi Note 9 Pro at 192.168.1.42:41567.
-Every option works without the cable until the phone restarts.
-Disconnected from 192.168.1.42:41567.
-To turn Wireless debugging off completely: on the phone open Settings > Additional settings >
-Developer options and switch off "Wireless debugging" (it also switches itself off when the
-phone leaves this Wi-Fi or restarts).
-Back on the USB cable: Redmi Note 9 Pro. Keep the cable plugged in.
-AFTER=unset

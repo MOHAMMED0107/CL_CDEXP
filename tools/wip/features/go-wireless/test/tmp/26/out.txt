@@ -1,5 +1,0 @@
-== Use the phone over Wi-Fi (no cable) ==
-The Wi-Fi connection to the phone (192.168.1.42:5555) is not working right now (adb says: offline).
-This happens when the phone restarts, moves to another Wi-Fi, or is out of range.
-OK, nothing was changed.
-AFTER=192.168.1.42:5555

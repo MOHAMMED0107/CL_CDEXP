@@ -1,5 +1,0 @@
-More than one device is connected. Which one should this script use?
-  1) Redmi Note 9 Pro       over USB cable, serial a1b2c3d4
-  2) Redmi Note 9 Pro       over Wi-Fi, 192.168.1.42:5555   (same phone as 1)
-Using: Redmi Note 9 Pro (over Wi-Fi, 192.168.1.42:5555).
-RC=0 PICKED=192.168.1.42:5555

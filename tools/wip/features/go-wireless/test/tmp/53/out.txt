@@ -1,2 +1,0 @@
-NEWVARS: GW_PORT GW_TAB GW_UNDO gw_msg gw_told
-FUNCS: go_wireless gw_adb gw_advice gw_already_wifi gw_ask gw_back_to_usb gw_choose gw_connect gw_dev_state gw_devices gw_fix_hostport gw_go_wifi gw_how gw_is_net gw_list_bad gw_list_unused gw_lost gw_mode gw_name gw_net_twin gw_others gw_pair_explain gw_pair_flow gw_pair_offer gw_pick_device gw_sh gw_state gw_undo_get gw_undo_save gw_undo_tcpip_now gw_usb_twin gw_valid_hostport gw_valid_ip gw_wait_device gw_wait_ready gw_wifi_ip gw_yes

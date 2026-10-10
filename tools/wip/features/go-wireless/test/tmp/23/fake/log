@@ -1,3 +1,0 @@
-env=192.168.1.42:5555	s=	get-state 
-env=192.168.1.42:5555	s=192.168.1.42:5555	get-state 
-env=192.168.1.42:5555	s=192.168.1.42:5555	shell getprop ro.product.marketname; getprop ro.product.model

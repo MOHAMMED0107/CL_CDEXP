@@ -1,6 +1,0 @@
-== Use the phone over Wi-Fi (no cable) ==
-Your phone is already connected over Wi-Fi too (192.168.1.42:5555), probably from earlier.
-Switching the phone back to USB-only mode...
-Checked: the phone is no longer listening on Wi-Fi.
-Back on the USB cable: Redmi Note 9 Pro. Keep the cable plugged in.
-AFTER=unset

@@ -1,7 +1,0 @@
-env=	s=	devices 
-env=	s=a1b2c3d4	shell getprop ro.product.marketname; getprop ro.product.model
-env=	s=a1b2c3d4	shell getprop ro.serialno
-env=	s=R58N12ABCDE	shell getprop ro.product.marketname; getprop ro.product.model
-env=	s=R58N12ABCDE	shell getprop ro.serialno
-env=R58N12ABCDE	s=R58N12ABCDE	shell getprop ro.product.marketname; getprop ro.product.model
-env=R58N12ABCDE	s=	shell getprop ro.product.model

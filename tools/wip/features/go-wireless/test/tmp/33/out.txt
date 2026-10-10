@@ -1,2 +1,0 @@
-Phone found: Redmi Note 9 Pro (over USB cable, serial a1b2c3d4).
-RC=0 PICKED=a1b2c3d4

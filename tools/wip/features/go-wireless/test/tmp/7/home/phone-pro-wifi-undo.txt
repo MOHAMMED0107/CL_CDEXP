@@ -1,9 +1,0 @@
-# Phone Pro: the phone was set up to work over Wi-Fi (Wi-Fi option in the menu).
-# Undo: choose the Wi-Fi option again and answer y to go back to USB, or restart the phone.
-# By hand, with the cable plugged in:  adb -s a1b2c3d4 usb
-# old_tcp_port is what the phone reported before the change (empty = could not be read).
-date=2026-10-10 05:30
-how=tcpip
-usb_serial=a1b2c3d4
-wifi_serial=192.168.1.42:5555
-old_tcp_port=

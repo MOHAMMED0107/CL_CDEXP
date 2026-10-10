@@ -1,4 +1,0 @@
-env=	s=	get-state 
-env=	s=	devices 
-env=	s=	devices 
-env=a1b2c3d4	s=a1b2c3d4	shell getprop ro.product.marketname; getprop ro.product.model

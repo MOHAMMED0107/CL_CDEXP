@@ -1,4 +1,0 @@
-env=R58N12ABCDE	s=	get-state 
-env=R58N12ABCDE	s=	devices 
-env=R58N12ABCDE	s=	devices 
-env=R58N12ABCDE	s=R58N12ABCDE	shell getprop ro.product.marketname; getprop ro.product.model
