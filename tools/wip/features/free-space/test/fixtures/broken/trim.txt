@@ -1,0 +1,6 @@
+Exception occurred while executing 'trim-caches':
+java.lang.SecurityException: Neither user 2000 nor current process has android.permission.CLEAR_APP_CACHE.
+	at android.app.ContextImpl.enforce(ContextImpl.java:2240)
+	at android.app.ContextImpl.enforceCallingOrSelfPermission(ContextImpl.java:2268)
+	at com.android.server.pm.PackageManagerService.freeStorageAndNotify(PackageManagerService.java:5626)
+	at com.android.server.pm.PackageManagerShellCommand.runTrimCaches(PackageManagerShellCommand.java:2633)

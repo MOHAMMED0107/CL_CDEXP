@@ -1,0 +1,156 @@
+Discharge step durations:
+  #0: +6m12s311ms to 64 (screen-off, power-save-off, device-idle-on)
+  #1: +5m58s20ms to 65 (screen-off, power-save-off, device-idle-on)
+  #2: +1m41s904ms to 66 (screen-on, power-save-off, device-idle-off)
+  #3: +2m3s117ms to 67 (screen-on, power-save-off, device-idle-off)
+  #4: +1m12s58ms to 68 (screen-on, power-save-off, device-idle-off)
+  Estimated discharge time remaining: +17h24m31s400ms
+  Estimated screen off time: 2d 14h 31m 0s 0ms
+  Estimated screen off power save time: 2d 14h 31m 0s 0ms
+  Estimated screen off device idle time: 2d 23h 2m 0s 0ms
+  Estimated screen on time: 3h 41m 2s 0ms
+
+Charge step durations:
+  #0: +1m32s811ms to 100 (screen-off, power-save-off, device-idle-on)
+  #1: +1m31s2ms to 99 (screen-off, power-save-off, device-idle-on)
+
+Statistics since last charge:
+  System starts: 0, currently on battery: false
+  Estimated battery capacity: 5020 mAh
+  Last learned battery capacity: 4811 mAh
+  Min learned battery capacity: 4811 mAh
+  Max learned battery capacity: 4811 mAh
+  Time on battery: 15h 42m 10s 512ms (98.1%) realtime, 7h 2m 1s 0ms (44.8%) uptime
+  Time on battery screen off: 11h 20m 5s 44ms (72.2%) realtime, 2h 41m 3s 0ms (17.1%) uptime
+  Time on battery screen doze: 0ms (0.0%)
+  Total run time: 16h 0m 3s 12ms realtime, 7h 20m 1s 0ms uptime
+  Discharge: 1712 mAh
+  Screen off discharge: 452 mAh
+  Screen doze discharge: 0 mAh
+  Screen on discharge: 1260 mAh
+  Device light doze discharge: 122 mAh
+  Device deep doze discharge: 201 mAh
+  Start clock time: 2026-10-09-16-40-12
+  Screen on: 4h 22m 5s 468ms (27.8%) 61x, Interactive: 4h 23m 9s 1ms (27.9%)
+  Screen brightnesses:
+    dark 1h 1m 12s 3ms (23.3%)
+    dim 2h 2m 3s 0ms (46.6%)
+    medium 1h 18m 50s 465ms (30.1%)
+  Device light idling: 3h 5m 1s 0ms (19.6%) 41x
+  Idle mode light time: 2h 51m 0s 12ms (18.1%) 40x -- longest 21m 3s 0ms
+  Device full idling: 6h 1m 3s 0ms (38.3%) 9x
+  Idle mode full time: 5h 40m 12s 0ms (36.1%) 9x -- longest 2h 3m 0s 0ms
+  Connectivity changes: 37
+  Total partial wakelock time: 1h15m3s133ms
+
+  CONNECTIVITY POWER SUMMARY START
+  Logging duration for connectivity statistics: 15h 42m 10s 512ms
+  Cellular Statistics:
+     Cellular kernel active time: 1h 3m 2s 1ms (6.7%)
+     Cellular data received: 412.23MB
+     Cellular data sent: 31.02MB
+     Cellular packets received: 351201
+     Cellular packets sent: 120332
+     Cellular Radio Access Technology:
+       lte 15h 2m 1s 0ms (95.7%)
+       nr 40m 9s 512ms (4.3%)
+  Wifi Statistics:
+     Wifi kernel active time: 21m 3s 2ms (2.2%)
+     WiFi data received: 98.12MB
+     WiFi data sent: 6.30MB
+  CONNECTIVITY POWER SUMMARY END
+
+  Bluetooth total received: 0B, sent: 0B
+  Bluetooth scan time: 2m 1s 0ms
+
+  Device battery use since last full charge
+    Amount discharged (lower bound): 35
+    Amount discharged (upper bound): 36
+    Amount discharged while screen on: 26
+    Amount discharged while screen off: 9
+    Amount discharged while screen doze: 0
+
+  Estimated power use (mAh):
+    Capacity: 5020, Computed drain: 1698, actual drain: 1757-1807
+    Global
+      screen: 466 apps: 466 duration: 4h 21m 7s 330ms
+      cpu: 719 apps: 719 duration: 6h 2m 41s 12ms
+      bluetooth: 1.84 apps: 0 duration: 2m 1s 0ms
+      audio: 13.3 apps: 13.3 duration: 1h 1m 2s 3ms
+      video: 0.980 apps: 0.980 duration: 5m 12s 0ms
+      system_services: 7.56 apps: 7.56
+      mobile_radio: 273 apps: 177 duration: 15h 42m 10s 512ms
+      sensors: 12.2 apps: 12.2
+      gnss: 37.0 apps: 37.0 duration: 48m 3s 120ms
+      wifi: 64.1 apps: 60.4 duration: 21m 3s 2ms
+      wakelock: 45.0 apps: 45.0
+      memory: 4.12 apps: 0
+      phone: 22.4 apps: 0 duration: 31m 12s 0ms
+      idle: 38.1 apps: 0
+      reattributed: 0 apps: -7.56000000
+    UID u0a233: 345 ( screen=98.4 cpu=142 system_services=4.21 mobile_radio=61.2 sensors=0.512 wifi=21.6 wakelock=8.42 audio=8.71 )
+    UID 1000: 281 ( cpu=231 system_services=0.884 mobile_radio=25.3 sensors=3.21 gnss=0.921 wifi=14.2 wakelock=12.6 reattributed=-7.56000000 )
+    UID u0a95: 241 ( screen=201 cpu=38.2 system_services=0.412 sensors=0.613 wifi=0.921 )
+    UID u0a251: 199 ( screen=121 cpu=52.3 audio=0.312 system_services=1.02 mobile_radio=18.1 wifi=6.21 )
+    UID u0a145: 142 ( cpu=61.2 system_services=0.211 mobile_radio=21.3 sensors=7.85 gnss=28.4 wifi=9.12 wakelock=14.1 )
+    UID u0a107: 86.4 ( screen=12.1 cpu=70.2 system_services=0.512 wakelock=3.61 )
+    UID 1001: 61.2 ( cpu=21.3 mobile_radio=39.9 )
+    UID u0a170: 58.7 ( screen=31.2 cpu=18.3 audio=2.11 video=0.980 wifi=6.12 )
+    UID 0: 44.1 ( cpu=44.1 )
+    UID u0a265: 39.3 ( screen=2.41 cpu=22.1 system_services=0.315 mobile_radio=8.20 wakelock=6.30 )
+    UID u0a139: 12.3 ( cpu=10.1 mobile_radio=2.20 )
+    UID 1021: 8.12 ( cpu=0.420 gnss=7.70 )
+    UID u0a282: 5.41 ( cpu=3.20 wifi=2.21 )
+    UID u999a233: 3.12 ( cpu=2.01 mobile_radio=1.11 )
+    UID 1041: 2.81 ( cpu=0.610 audio=2.20 )
+    UID 2000: 1.23 ( cpu=1.23 )
+    UID u0a160: 0.874 ( cpu=0.874 )
+  Per-app mobile ms per packet:
+    Uid u0a233: 52.1 (1210 packets over 1m3s12ms) 88x
+    Uid 1000: 41.3 (802 packets over 33s120ms) 61x
+    Uid u0a145: 12.7 (2101 packets over 26s691ms) 140x
+    TOTAL TIME: 2m 2s 823ms (0.2%)
+
+  All kernel wake locks:
+  Kernel Wake lock PowerManagerService.WakeLocks: 1h 12m 31s 201ms (4021 times) realtime
+  Kernel Wake lock qcom_rx_wakelock: 31m 2s 12ms (9012 times) realtime
+  Kernel Wake lock wlan: 12m 3s 1ms (1203 times) realtime
+  Kernel Wake lock alarmtimer: 3m 2s 0ms (312 times) realtime
+
+  All partial wake locks:
+  Wake lock u0a145 NlpWakeLock: 22m 41s 380ms (1832 times) max=12018 actual=1932210 realtime
+  Wake lock u0a233 *job*/com.whatsapp/androidx.work.impl.background.systemjob.SystemJobService: 18m 2s 117ms (212 times) max=60412 actual=1207551 realtime
+  Wake lock u0a233 WhatsApp:MessageService: 9m 30s 0ms (55 times) max=90001 realtime
+  Wake lock 1000 *alarm*: 9m 12s 64ms (3012 times) max=4021 actual=601233 realtime
+  Wake lock u0a265 *job*/com.truecaller/.background_work.TrackedWorker: 6m 3s 221ms (88 times) max=31003 realtime
+  Wake lock 1001 RILJ_ACK_WL: 4m 1s 9ms (4410 times) max=3012 actual=262031 realtime
+  Wake lock u0a145 GCoreFlp: 3m 12s 500ms (402 times) max=5021 realtime
+  Wake lock u0a107 KeyguardViewMediator.mDelayedShowingDisplayable: 52s 13ms (120 times) max=800 realtime
+  Wake lock 1000 NetworkStats: 41s 7ms (300 times) max=520 realtime
+  Wake lock u0a251 *job*/com.instagram.android/com.instagram.common.jobscheduler.JobSchedulerService: 33s 121ms (14 times) max=10002 realtime
+  Wake lock 1000 deviceidle_maint: 12s 0ms (21 times) max=1003 realtime
+  Wake lock u0a265 *walarm*:com.truecaller.SYNC_ALARM: 2s 300ms (40 times) max=210 (running for 120ms) realtime
+  Wake lock u0a170 *job*/com.google.android.youtube/androidx.work.impl.background.systemjob.SystemJobService: 401ms (2 times) max=300 realtime
+
+  All wakeup reasons:
+  Wakeup reason Abort:Pending Wakeup Sources: qcom_rx_wakelock : 3m 12s 1ms (2103 times) realtime
+  Wakeup reason 200:qcom,smd-modem:200:qcom,smd-modem: 2m 1s 0ms (1201 times) realtime
+  Wakeup reason unknown: 41s 3ms (602 times) realtime
+
+  1000:
+    Mobile network: 3.21MB received, 412.12KB sent (packets 4021 received, 1203 sent)
+    Wake lock *alarm*: 9m 12s 64ms partial (3012 times) max=4021 actual=601233 realtime
+    Wake lock NetworkStats: 41s 7ms partial (300 times) max=520 realtime
+    Wake lock deviceidle_maint: 12s 0ms partial (21 times) max=1003 realtime
+    TOTAL wake: 10m 5s 71ms blamed partial, 10m 21s 3ms actual partial realtime
+  u0a233:
+    Mobile network: 198.31MB received, 12.03MB sent (packets 201321 received, 61203 sent)
+    Wake lock *job*/com.whatsapp/androidx.work.impl.background.systemjob.SystemJobService: 18m 2s 117ms partial (212 times) max=60412 actual=1207551 realtime
+    Wake lock WhatsApp:MessageService: 9m 30s 0ms partial (55 times) max=90001 realtime
+    TOTAL wake: 27m 32s 117ms blamed partial, 29m 1s 0ms actual partial realtime
+    Foreground activities: 2h 1m 3s 0ms realtime (61 times)
+  u0a145:
+    Wake lock NlpWakeLock: 22m 41s 380ms partial (1832 times) max=12018 actual=1932210 realtime
+    Wake lock GCoreFlp: 3m 12s 500ms partial (402 times) max=5021 realtime
+    TOTAL wake: 25m 53s 880ms blamed partial, 34m 2s 1ms actual partial realtime
+

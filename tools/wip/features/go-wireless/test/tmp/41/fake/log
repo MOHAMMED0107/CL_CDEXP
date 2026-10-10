@@ -1,0 +1,7 @@
+env=	s=	get-state 
+env=	s=	devices 
+env=	s=a1b2c3d4	shell getprop ro.product.marketname; getprop ro.product.model
+env=	s=a1b2c3d4	shell getprop ro.serialno
+env=	s=192.168.1.42:5555	shell getprop ro.product.marketname; getprop ro.product.model
+env=	s=192.168.1.42:5555	shell getprop ro.serialno
+env=192.168.1.42:5555	s=192.168.1.42:5555	shell getprop ro.product.marketname; getprop ro.product.model

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fake sleep for the tests: returns at once (the fake adb simulates time with poll counters).
+[ -n "${FAKE_ADB_DIR:-}" ] && echo "sleep $*" >>"$FAKE_ADB_DIR/sleeps"
+exit 0

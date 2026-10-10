@@ -1,0 +1,7 @@
+More than one device is connected. Which one should this script use?
+  1) Redmi Note 9 Pro       over USB cable, serial a1b2c3d4
+  2) SM-A525F               over USB cable, serial R58N12ABCDE
+Please type a number from 1 to 2.
+Please type a number from 1 to 2.
+Using: SM-A525F (over USB cable, serial R58N12ABCDE).
+RC=0 PICKED=R58N12ABCDE

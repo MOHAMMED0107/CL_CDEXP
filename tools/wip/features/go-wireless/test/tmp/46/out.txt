@@ -1,0 +1,2 @@
+Using the device set in ANDROID_SERIAL: SM-A525F (over USB cable, serial R58N12ABCDE).
+RC=0 PICKED=R58N12ABCDE

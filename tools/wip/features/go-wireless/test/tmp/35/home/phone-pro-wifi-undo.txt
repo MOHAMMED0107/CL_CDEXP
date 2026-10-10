@@ -1,0 +1,10 @@
+# Phone Pro: the phone was set up to work over Wi-Fi (Wi-Fi option in the menu).
+# Undo: choose the Wi-Fi option again and answer y to go back to USB. Then on the phone:
+#   Settings > Additional settings > Developer options > Wireless debugging: switch it off.
+#   To forget this computer: Wireless debugging > Paired devices > this computer > Forget.
+# old_tcp_port is what the phone reported before the change (empty = could not be read).
+date=2026-10-10 05:30
+how=pair
+usb_serial=
+wifi_serial=192.168.1.42:41567
+old_tcp_port=

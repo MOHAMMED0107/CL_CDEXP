@@ -1,0 +1,4 @@
+== Use the phone over Wi-Fi (no cable) ==
+Your phone is already connected over Wi-Fi too (192.168.1.42:5555), probably from earlier.
+Done: every option now works over Wi-Fi. You can unplug the cable.
+AFTER=192.168.1.42:5555

@@ -1,0 +1,2 @@
+Using the device set in ANDROID_SERIAL: Redmi Note 9 Pro (over Wi-Fi, 192.168.1.42:5555).
+RC=0 PICKED=192.168.1.42:5555

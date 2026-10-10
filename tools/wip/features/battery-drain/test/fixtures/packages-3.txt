@@ -1,0 +1,4 @@
+package:com.whatsapp
+package:com.instagram.android
+package:com.truecaller
+package:com.phonepe.app

@@ -1,0 +1,3 @@
+Found a device, but it is not ready:
+  a1b2c3d4: waiting for your OK. Unlock the phone and tap "Allow" on the "Allow USB debugging?"
+     prompt (tick "Always allow from this computer"). No prompt? Unplug and plug the cable back in.

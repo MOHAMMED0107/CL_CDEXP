@@ -1,0 +1,4 @@
+No phone found. Check the cable, unlock the phone, and accept the 'Allow USB debugging' prompt.
+List of devices attached
+
+No cable? Android 11+ phones can also connect over Wi-Fi ("Wireless debugging").

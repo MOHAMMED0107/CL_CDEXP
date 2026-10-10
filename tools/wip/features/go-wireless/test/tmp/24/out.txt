@@ -1,0 +1,7 @@
+== Use the phone over Wi-Fi (no cable) ==
+You are connected over Wi-Fi right now: Redmi Note 9 Pro at 192.168.1.42:5555.
+Every option works without the cable until the phone restarts.
+The USB cable is not plugged in (or the phone is not showing up on it).
+If you go on, this script cannot reach the phone until you plug the cable in.
+OK, nothing was changed. You are still connected over Wi-Fi.
+AFTER=192.168.1.42:5555

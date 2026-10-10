@@ -1,0 +1,9 @@
+env=	s=	get-state 
+env=	s=	devices 
+env=	s=	devices 
+env=	s=	version 
+env=	s=	pair 192.168.1.42:37123 482915
+env=	s=	connect 192.168.1.42:41567
+env=	s=192.168.1.42:41567	get-state 
+env=192.168.1.42:41567	s=192.168.1.42:41567	shell getprop ro.product.marketname; getprop ro.product.model
+env=192.168.1.42:41567	s=	shell getprop ro.product.model

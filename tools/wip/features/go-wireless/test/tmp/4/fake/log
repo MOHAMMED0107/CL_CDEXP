@@ -1,0 +1,6 @@
+env=	s=	get-state 
+env=	s=	get-serialno 
+env=	s=a1b2c3d4	get-state 
+env=	s=a1b2c3d4	shell getprop ro.serialno
+env=	s=	devices 
+env=	s=	shell ip -f inet addr show wlan0

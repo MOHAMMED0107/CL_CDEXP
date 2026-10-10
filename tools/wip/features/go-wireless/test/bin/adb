@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# Fake adb for the go-wireless tests.
+# Models adb platform-tools 35 talking to a Redmi Note 9 Pro (MIUI 14, Android 12, not rooted).
+# Messages copied from AOSP adb (packages/modules/adb, Android 12): `adb devices` prints
+# "List of devices attached" then "serial<TAB>state"; tcpip/usb print "restarting in TCP mode
+# port: N" / "restarting in USB mode"; connect always exits 0 and says "connected to X",
+# "already connected to X", "failed to authenticate to X" or "failed to connect to 'X': reason";
+# disconnect says "disconnected X" or "error: no such device 'X'"; pair says "Successfully paired
+# to X [guid=...]" or "Failed: ...". Every line ends in \r\n, like adb.exe on Windows.
+#
+# State lives in $FAKE_ADB_DIR (set by test/run-tests.sh):
+#   transports            "serial|state|phone-id" per line (what `adb devices` lists)
+#   phone/<id>/props/<k>  getprop values;  phone/<id>/ip  Wi-Fi IP
+#   phone/<id>/tcpport    port adbd listens on over Wi-Fi ("" or 0 = USB only)   <- changed by tcpip/usb
+#   phone/<id>/paired     exists once this computer is paired for Wireless debugging <- changed by pair
+#   phone/<id>/pair_port, pair_code, tls_port   Wireless debugging details
+#   phone/<id>/wlan_addr, wlan_route   fixture names for `ip -f inet addr show wlan0` / `ip route`
+#   knob/<name>           behaviour switches (see run-tests.sh)
+#   restart/<serial>      number of polls during which a restarting device is not listed
+#   flip/<serial>         "N state": state changes after N polls (e.g. user taps Allow)
+#   log                   every call;  unknown   calls this fake does not understand
+set -u
+F=${FAKE_ADB_DIR:?FAKE_ADB_DIR is not set}
+FIX=$(cd "$(dirname "$0")/../fixtures" && pwd)
+
+say() { printf '%s\r\n' "$@"; }
+err() { printf '%s\r\n' "$@" >&2; }
+safe() { printf '%s' "$1" | tr ':/' '__'; }
+knob() { [ -f "$F/knob/$1" ] && cat "$F/knob/$1"; }
+
+sflag=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -s) sflag=${2:-}; shift 2 ;;
+    -d | -e | -a) shift ;;
+    -t | -H | -P | -L) shift 2 ;;
+    *) break ;;
+  esac
+done
+cmd=${1:-}
+[ $# -gt 0 ] && shift
+printf 'env=%s\ts=%s\t%s %s\n' "${ANDROID_SERIAL:-}" "$sflag" "$cmd" "$*" >>"$F/log"
+touch "$F/transports"
+mkdir -p "$F/restart" "$F/flip"
+
+# One poll tick: restarting devices come back, pending state changes count down.
+tick() {
+  local f n st s
+  for f in "$F"/restart/*; do
+    [ -f "$f" ] || continue
+    n=$(cat "$f")
+    if [ "$n" -gt 0 ]; then echo $((n - 1)) >"$f"; else rm -f "$f"; fi
+  done
+  for f in "$F"/flip/*; do
+    [ -f "$f" ] || continue
+    case "$f" in *.serial) continue ;; esac
+    read -r n st <"$f"
+    s=$(cat "$f.serial")
+    if [ "$n" -le 1 ]; then
+      set_state "$s" "$st"
+      rm -f "$f" "$f.serial"
+    else
+      echo "$((n - 1)) $st" >"$f"
+    fi
+  done
+}
+
+hidden() { [ -f "$F/restart/$(safe "$1")" ] && [ "$(cat "$F/restart/$(safe "$1")")" -gt 0 ]; }
+visible() {
+  local s st p
+  while IFS='|' read -r s st p; do
+    [ -n "$s" ] || continue
+    hidden "$s" && continue
+    echo "$s|$st|$p"
+  done <"$F/transports"
+}
+line_of() { awk -F '|' -v s="$1" '$1 == s { print; exit }' "$F/transports"; }
+set_state() { awk -F '|' -v s="$1" -v st="$2" 'BEGIN { OFS = "|" } $1 == s { $2 = st } { print }' "$F/transports" >"$F/t.new" && mv "$F/t.new" "$F/transports"; }
+add_t() { if [ -n "$(line_of "$1")" ]; then set_state "$1" "$2"; else echo "$1|$2|$3" >>"$F/transports"; fi; }
+del_t() { awk -F '|' -v s="$1" '$1 != s' "$F/transports" >"$F/t.new" && mv "$F/t.new" "$F/transports"; }
+restart_dev() { echo "$(knob restart_polls || echo 2)" >"$F/restart/$(safe "$1")"; }
+flip_later() { echo "$2 $3" >"$F/flip/$(safe "$1")"; echo "$1" >"$F/flip/$(safe "$1").serial"; }
+
+# Pick the device a command is for, exactly like adb: -s, then $ANDROID_SERIAL, then "the only one".
+resolve() {
+  local want=$sflag line n rest
+  [ -n "$want" ] || want=${ANDROID_SERIAL:-}
+  if [ -n "$want" ]; then
+    line=$(visible | awk -F '|' -v s="$want" '$1 == s { print; exit }')
+    [ -n "$line" ] || { err "error: device '$want' not found"; exit 1; }
+  else
+    n=$(visible | grep -c .)
+    [ "$n" -gt 0 ] || { err "error: no devices/emulators found"; exit 1; }
+    [ "$n" -eq 1 ] || { err "error: more than one device/emulator"; exit 1; }
+    line=$(visible)
+  fi
+  T_SERIAL=${line%%|*}
+  rest=${line#*|}
+  T_STATE=${rest%%|*}
+  T_PHONE=${rest#*|}
+  P="$F/phone/$T_PHONE"
+  case "$T_STATE" in
+    unauthorized)
+      err "error: device unauthorized." "This adb server's \$ADB_VENDOR_KEYS is not set" \
+        "Try 'adb kill-server' if that seems wrong." "Otherwise check for a confirmation dialog on your device."
+      exit 1 ;;
+    offline) err "error: device offline"; exit 1 ;;
+    authorizing) err "error: device still authorizing"; exit 1 ;;
+    connecting) err "error: device still connecting"; exit 1 ;;
+  esac
+}
+
+is_net() { case "$1" in *._tcp* | *:[0-9]*) return 0 ;; esac; return 1; }
+
+# Network transports of a phone that use port $2 go offline when adbd restarts.
+drop_net() {
+  local s st p
+  while IFS='|' read -r s st p; do
+    [ "$p" = "$1" ] && is_net "$s" && case "$s" in *:"$2") set_state "$s" offline ;; esac
+  done <"$F/transports"
+}
+
+getprop() {
+  local key=$1
+  if [ "$key" = service.adb.tcp.port ]; then
+    # adbd_config_prop: some builds do not let the shell user read it.
+    if [ -f "$F/knob/tcpport_unreadable" ]; then say ""; else say "$(cat "$P/tcpport" 2>/dev/null)"; fi
+    return
+  fi
+  if [ -f "$P/props/$key" ]; then say "$(cat "$P/props/$key")"; else say ""; fi
+}
+
+fixture_out() {
+  local name
+  name=$(cat "$1" 2>/dev/null)
+  [ -n "$name" ] || return 0
+  case "$name" in
+    *.err) cat "$FIX/$name" >&2; return 1 ;;
+    *) cat "$FIX/$name" ;;
+  esac
+}
+
+run_shell() {
+  local c=$1 part rc=0 parts
+  IFS=';' read -r -a parts <<<"$c"
+  for part in "${parts[@]}"; do
+    part=$(printf '%s' "$part" | sed 's/^ *//; s/ *$//')
+    case "$part" in
+      "getprop "*) getprop "${part#getprop }" ;;
+      "ip -f inet addr show wlan0") fixture_out "$P/wlan_addr" || rc=1 ;;
+      "ip route") fixture_out "$P/wlan_route" || rc=1 ;;
+      *)
+        echo "shell: $part" >>"$F/unknown"
+        err "/system/bin/sh: ${part%% *}: inaccessible or not found"
+        rc=127 ;;
+    esac
+  done
+  return "$rc"
+}
+
+phone_with_ip() {
+  local d
+  for d in "$F"/phone/*; do
+    [ -d "$d" ] || continue
+    [ "$(cat "$d/ip" 2>/dev/null)" = "$1" ] && { basename "$d"; return 0; }
+  done
+  return 1
+}
+
+case "$cmd" in
+  devices)
+    tick
+    if [ -f "$F/knob/daemon_msgs" ]; then
+      say "* daemon not running; starting now at tcp:5037" "* daemon started successfully"
+    fi
+    say "List of devices attached"
+    visible | while IFS='|' read -r s st p; do printf '%s\t%s\r\n' "$s" "$st"; done
+    say ""
+    ;;
+  get-state)
+    if [ -f "$F/knob/startup_ok" ] && [ -z "$sflag" ] && [ ! -f "$F/startup_used" ]; then
+      # Lets the main script's old startup check pass so gw_pick_device itself can be tested.
+      touch "$F/startup_used"
+      say device
+      exit 0
+    fi
+    tick
+    resolve
+    say "$T_STATE"
+    ;;
+  get-serialno)
+    tick
+    resolve
+    say "$T_SERIAL"
+    ;;
+  shell)
+    resolve
+    [ -t 0 ] || cat >/dev/null # real adb forwards stdin to the phone, so it would eat keyboard answers
+    run_shell "$*"
+    exit $?
+    ;;
+  tcpip)
+    resolve
+    port=${1:-}
+    case "$(knob tcpip)" in
+      closed) err "error: closed"; exit 1 ;;
+      noop) say "restarting in TCP mode port: $port"; exit 0 ;; # MIUI build that ignores it
+    esac
+    say "restarting in TCP mode port: $port"
+    echo "$port" >"$P/tcpport"
+    is_net "$T_SERIAL" || restart_dev "$T_SERIAL"
+    drop_net "$T_PHONE" "$port"
+    ;;
+  usb)
+    resolve
+    if [ -f "$F/knob/usb_noconfirm" ]; then err "error: closed"; exit 1; fi
+    old=$(cat "$P/tcpport" 2>/dev/null)
+    say "restarting in USB mode"
+    echo 0 >"$P/tcpport"
+    is_net "$T_SERIAL" || restart_dev "$T_SERIAL"
+    [ -n "$old" ] && [ "$old" != 0 ] && drop_net "$T_PHONE" "$old"
+    ;;
+  connect)
+    hp=${1:-}
+    host=${hp%:*}
+    port=${hp##*:}
+    [ "$host" = "$hp" ] && port=5555
+    cur=$(line_of "$hp")
+    if [ -n "$cur" ]; then
+      case "$cur" in *"|offline|"*) ;; *) say "already connected to $hp"; exit 0 ;; esac
+    fi
+    if [ -f "$F/knob/unreachable" ] || ! ph=$(phone_with_ip "$host"); then
+      say "$(knob connect_fail || echo "failed to connect to '$hp': Connection timed out")"
+      exit 0
+    fi
+    P="$F/phone/$ph"
+    listening=no
+    [ "$(cat "$P/tcpport" 2>/dev/null)" = "$port" ] && listening=yes
+    [ -f "$P/paired" ] && [ "$(cat "$P/tls_port" 2>/dev/null)" = "$port" ] && listening=yes
+    if [ "$listening" = no ]; then
+      say "$(knob connect_fail || echo "failed to connect to '$hp': Connection refused")"
+      exit 0
+    fi
+    case "$(knob auth)" in
+      unauthorized) add_t "$hp" unauthorized "$ph"; say "failed to authenticate to $hp" ;;
+      unauth_then_ok) add_t "$hp" unauthorized "$ph"; flip_later "$hp" 3 device; say "failed to authenticate to $hp" ;;
+      *) add_t "$hp" device "$ph"; say "connected to $hp" ;;
+    esac
+    ;;
+  disconnect)
+    hp=${1:-}
+    if [ -z "$hp" ]; then
+      awk -F '|' '$1 !~ /:[0-9]+$/ && $1 !~ /\._tcp/' "$F/transports" >"$F/t.new" && mv "$F/t.new" "$F/transports"
+      say "disconnected everything"
+    elif [ -n "$(line_of "$hp")" ]; then
+      del_t "$hp"
+      say "disconnected $hp"
+    else
+      err "error: no such device '$hp'"
+      exit 1
+    fi
+    ;;
+  pair)
+    if [ "$(knob version)" = adb-version-29.txt ] || [ "$(knob version)" = adb-version-old.txt ]; then
+      err "adb: unknown command pair"
+      exit 1
+    fi
+    hp=${1:-}
+    code=${2:-}
+    host=${hp%:*}
+    port=${hp##*:}
+    if ! ph=$(phone_with_ip "$host") || [ "$(cat "$F/phone/$ph/pair_port" 2>/dev/null)" != "$port" ]; then
+      say "Failed: Unable to start pairing client."
+      exit 0
+    fi
+    P="$F/phone/$ph"
+    if [ "$(cat "$P/pair_code" 2>/dev/null)" != "$code" ]; then
+      say "Failed: Wrong password or connection was dropped."
+      exit 0
+    fi
+    touch "$P/paired"
+    sn=$(cat "$P/props/ro.serialno" 2>/dev/null)
+    say "Successfully paired to $hp [guid=adb-$sn-Xy7Kq2]"
+    # Newer adb finds the phone by mDNS and connects by itself right after pairing.
+    [ -f "$F/knob/mdns" ] && add_t "adb-$sn-Xy7Kq2._adb-tls-connect._tcp" device "$ph"
+    ;;
+  version)
+    cat "$FIX/$(knob version || echo adb-version-35.txt)"
+    ;;
+  start-server | kill-server)
+    ;;
+  *)
+    echo "adb: $cmd $*" >>"$F/unknown"
+    err "adb: unknown command $cmd"
+    exit 1
+    ;;
+esac
+exit 0

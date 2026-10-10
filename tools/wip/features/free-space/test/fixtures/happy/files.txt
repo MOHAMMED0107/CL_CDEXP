@@ -1,0 +1,51 @@
+4012345 /sdcard/DCIM/Camera/IMG_20240815_183012.jpg
+3876543 /sdcard/DCIM/Camera/IMG_20240815_183020.jpg
+2045678901 /sdcard/DCIM/Camera/VID_20240901_101500.mp4
+734003200 /sdcard/DCIM/Camera/VID_20240712_200101.mp4
+314572800 /sdcard/DCIM/Camera/.trashed-@EXP20@-VID_20240920_181818.mp4
+4194304 /sdcard/DCIM/Camera/.trashed-@EXP20@-IMG_20240920_181800.jpg
+1234567 /sdcard/DCIM/Screenshots/Screenshot_2024-09-01-10-15-00-123_com.whatsapp.jpg
+987654 /sdcard/DCIM/Screenshots/Screenshot_2024-09-02-11-00-00-456_com.android.chrome.jpg
+2097152 /sdcard/Pictures/.trashed-@EXP28@-edited photo (1).jpg
+5242880 /sdcard/Pictures/Instagram/IMG_9876.jpg
+157286400 /sdcard/Movies/My Trip 2023.mp4
+52428800 /sdcard/Download/WhatsApp_Plus_v17.60.apk
+31457280 /sdcard/Download/Some App (1).apk
+18874368 /sdcard/Download/Mum's game.apk
+2048000 /sdcard/Download/Aadhaar card.pdf
+1048576 /sdcard/Download/.pending-1729000000-NewApp.apk
+26214400 /sdcard/Download/Telegram/Telegram X 0.26.apk
+12582912 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/Sent/game.apk
+524288 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/Invoice.pdf
+245760 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240901-WA0001.jpg
+94371840 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/VID-20240905-WA0003.mp4
+32768 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Voice Notes/202436/PTT-20240905-WA0004.opus
+0 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/.Statuses/.nomedia
+41943040 /sdcard/Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt14
+41418752 /sdcard/Android/media/com.whatsapp/WhatsApp/Databases/msgstore-2024-10-08.1.db.crypt14
+40894464 /sdcard/Android/media/com.whatsapp/WhatsApp/Databases/msgstore-2024-10-07.1.db.crypt14
+40370176 /sdcard/Android/media/com.whatsapp/WhatsApp/Databases/msgstore-2024-10-06.1.db.crypt14
+65536 /sdcard/Android/media/com.whatsapp/WhatsApp/Backups/chatsettingsbackup.db.crypt14
+8388608 /sdcard/WhatsApp/Databases/msgstore-2021-03-01.1.db.crypt12
+204800 /sdcard/WhatsApp/Media/WhatsApp Images/IMG-20210301-WA0000.jpg
+10485760 /sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Databases/msgstore.db.crypt14
+10223616 /sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Databases/msgstore-2024-10-08.1.db.crypt14
+1048576 /sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Images/IMG-20240101-WA0001.jpg
+125829120 /sdcard/Android/data/org.telegram.messenger/files/Telegram/Telegram Video/4_5832049.mp4
+9437184 /sdcard/Android/data/org.telegram.messenger/files/Telegram/Telegram Documents/MiXplorer_v6.64.apk
+52428800 /sdcard/Android/data/com.google.android.youtube/files/offline/stream_1.exo
+419430400 /sdcard/Android/data/com.old.game/files/res/level1.pak
+1048576 /sdcard/Android/data/com.example.uninstalled/cache/thumb.tmp
+2097152 /sdcard/Android/data/com.miui.msa.global/files/ad_cache.bin
+4096 /sdcard/Android/data/My Stuff/readme.txt
+0 /sdcard/Android/data/.nomedia
+3145728 /sdcard/Android/media/com.oldapp.recorder/Recordings/rec 1.m4a
+1887436800 /sdcard/Android/obb/com.tencent.ig/main.18432.com.tencent.ig.obb
+2621440 /sdcard/MIUI/Gallery/cloud/.trashBin/a8f1c2e4b9d7.jpg
+3670016 /sdcard/MIUI/Gallery/cloud/.trashBin/0c3b77e1f2a9.jpg
+131072 /sdcard/MIUI/Gallery/cloud/.thumbnailFile/IMG_20240815_183012.jpg
+5242880 /sdcard/MIUI/debug_log/powerinfo/power_2024-10-01.log
+1048576 /sdcard/MIUI/debug_log/common/bugreport-2024-09-30-121212.zip
+524288 /sdcard/MIUI/debug_log/.mqsas/mqs_2024-10-02.txt
+6291456 /sdcard/MIUI/sound_recorder/call_rec/Call@Mum(98xxxx)_20240901.mp3
+7340032 /sdcard/Music/song.mp3

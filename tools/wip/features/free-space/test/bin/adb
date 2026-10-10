@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+# Fake adb for the free-space tests. It pretends to be a Redmi Note 9 Pro (Android 12 / MIUI 14,
+# not rooted) and answers ONLY the exact commands feature.sh sends; anything else is written to
+# $FAKE_STATE/unknown and fails like an unknown command would.
+#
+# The phone's shared storage is a list of "size path" lines ($FAKE_FIXTURES/files.txt) plus empty
+# folders (dirs.txt). Deleting, pushing and cache trimming are recorded in $FAKE_STATE:
+#   deleted  paths removed from the phone (a folder hides everything below it)
+#   changes  every command that changed the phone (trim / rm / push)
+#   pulls    "remote<TAB>local" copied to the computer
+#   pushes   "local<TAB>remote" copied back to the phone
+#   calls    every adb invocation
+# Output of "adb shell" uses \r\n line endings like real adb.
+# Optional switches, one per line in $FAKE_FIXTURES/flags:
+#   DF_DENIED DF_WRAPPED PKGS_BROKEN LSDATA_DENIED LSMEDIA_DENIED
+set -u
+FIX=${FAKE_FIXTURES:?FAKE_FIXTURES not set}
+ST=${FAKE_STATE:?FAKE_STATE not set}
+mkdir -p "$ST"
+for f in deleted changes pulls pushes unknown calls; do [ -e "$ST/$f" ] || : >"$ST/$f"; done
+printf '%s\n' "$*" >>"$ST/calls"
+
+# Exactly what feature.sh sends.
+C_DF='df /data'
+C_TRIM='pm trim-caches 999G 2>&1'
+C_DISK='dumpsys diskstats'
+C_PKGS='pm list packages -u'
+C_SCAN="find /sdcard/ -type f '(' -size +20480 -o -name '.trashed-*' ')' -exec stat -c '%s %n' {} + 2>/dev/null"
+C_MIUIBIN="find /sdcard/MIUI/Gallery/cloud/.trashBin /sdcard/Android/media/com.miui.gallery/cloud/.trashBin -type f -exec stat -c '%s %n' {} + 2>/dev/null"
+C_APK="find /sdcard/Download '/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents' '/sdcard/WhatsApp/Media/WhatsApp Documents' '/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents' /sdcard/Telegram /sdcard/Android/data/org.telegram.messenger/files/Telegram /sdcard/Android/data/org.telegram.messenger.web/files/Telegram -type f '(' -iname '*.apk' -o -iname '*.xapk' -o -iname '*.apks' ')' -exec stat -c '%s %n' {} + 2>/dev/null"
+C_WA="find /sdcard/Android/media/com.whatsapp/WhatsApp/Databases /sdcard/WhatsApp/Databases '/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Databases' '/sdcard/WhatsApp Business/Databases' -maxdepth 1 -type f -name 'msgstore*' -exec stat -c '%s %n' {} + 2>/dev/null"
+C_LOGS="find /sdcard/MIUI/debug_log -type f -exec stat -c '%s %n' {} + 2>/dev/null"
+C_LSDATA='ls -1 /sdcard/Android/data 2>/dev/null || echo FS_DENIED'
+C_LSMEDIA='ls -1 /sdcard/Android/media 2>/dev/null || echo FS_DENIED'
+
+crlf() { awk '{ printf "%s\r\n", $0 }'; }
+flag() { grep -qx "$1" "$FIX/flags" 2>/dev/null; }
+q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+unknown() {
+  printf '%s\n' "$1" >>"$ST/unknown"
+  echo "/system/bin/sh: unexpected command in fake adb: $1" >&2
+  exit 127
+}
+
+# Files still on the phone: "size path".
+cur_files() {
+  awk 'FILENAME == ARGV[1] { del[$0] = 1; next }
+       NF >= 2 { p = substr($0, length($1) + 2); for (d in del) if (p == d || index(p, d "/") == 1) next; print }' \
+    "$ST/deleted" "$FIX/files.txt"
+}
+# Folders still on the phone.
+cur_dirs() {
+  {
+    cur_files | awk '{ p = substr($0, length($1) + 2); while (sub(/\/[^\/]*$/, "", p) && p != "") print p }'
+    awk 'FILENAME == ARGV[1] { del[$0] = 1; next }
+         NF { for (d in del) if ($0 == d || index($0, d "/") == 1) next; print }' "$ST/deleted" "$FIX/dirs.txt"
+  } | LC_ALL=C sort -u
+}
+file_size() { cur_files | awk -v p="$1" 'substr($0, length($1) + 2) == p { print $1; exit }'; }
+is_dir() { cur_dirs | grep -qxF -- "$1"; }
+exists() { [ -n "$(file_size "$1")" ] || is_dir "$1"; }
+# Filter the current files with an awk condition on p (path), b (base name), s (size).
+find_files() {
+  cur_files | awk "{ s = \$1; p = substr(\$0, length(\$1) + 2); n = split(p, a, \"/\"); b = a[n]; d = substr(p, 1, length(p) - length(b) - 1) }
+    $1 { print s \" \" p }" | crlf
+}
+# Remove a path (and anything below it) from the deleted list, i.e. it is back on the phone.
+undelete() {
+  awk -v t="$1" '$0 != t && index($0, t "/") != 1' "$ST/deleted" >"$ST/deleted.new"
+  mv "$ST/deleted.new" "$ST/deleted"
+}
+make_sparse() { mkdir -p "$(dirname "$1")"; dd if=/dev/zero of="$1" bs=1 count=0 seek="$2" 2>/dev/null; }
+
+do_df() {
+  if flag DF_DENIED; then echo "df: /data: Permission denied" >&2; return 1; fi
+  . "$FIX/df.conf"   # TOTAL USED AVAIL TRIM_GAIN (KB), DEV
+  local gone_kb trim=0 used avail pct
+  gone_kb=$(awk 'FILENAME == ARGV[1] { cur[$0] = 1; next } !($0 in cur) && NF >= 2 { s += $1 } END { printf "%.0f", s / 1024 }' \
+    <(cur_files) "$FIX/files.txt")
+  [ -e "$ST/trimmed" ] && trim=$TRIM_GAIN
+  avail=$((AVAIL + trim + gone_kb))
+  used=$((USED - trim - gone_kb))
+  pct=$(( (used * 100 + used + avail - 1) / (used + avail) ))
+  {
+    printf '%-15s %9s %8s %9s %4s %s\n' "Filesystem" "1K-blocks" "Used" "Available" "Use%" "Mounted on"
+    if flag DF_WRAPPED; then
+      printf '%s\n%15s %9s %8s %9s %3s%% %s\n' "$DEV" "" "$TOTAL" "$used" "$avail" "$pct" "/data"
+    else
+      printf '%-15s %9s %8s %9s %3s%% %s\n' "$DEV" "$TOTAL" "$used" "$avail" "$pct" "/data"
+    fi
+  } | crlf
+}
+
+do_ls() {  # immediate children of a folder, sorted like toybox ls
+  local dir=$1
+  { cur_files | awk '{ print substr($0, length($1) + 2) }'; cur_dirs; } \
+    | awk -v d="$dir/" 'index($0, d) == 1 { r = substr($0, length(d) + 1); sub(/\/.*/, "", r); if (r != "") print r }' \
+    | LC_ALL=C sort -u | crlf
+}
+
+do_du() {  # du -s 'p1' 'p2' ... 2>/dev/null
+  local cmd=$1 body expect p kb
+  body=${cmd% 2>/dev/null}
+  [ "$body" != "$cmd" ] || unknown "$cmd"
+  eval "set -- $body"
+  [ "${1:-} ${2:-}" = "du -s" ] || unknown "$cmd"
+  shift 2
+  expect="du -s"
+  for p in "$@"; do expect="$expect $(q "$p")"; done
+  [ "$expect 2>/dev/null" = "$cmd" ] || unknown "$cmd"
+  for p in "$@"; do
+    kb=$(file_size "$p")
+    if [ -n "$kb" ]; then
+      kb=$(( (kb + 4095) / 4096 * 4 ))
+    elif is_dir "$p"; then
+      kb=$(cur_files | awk -v d="$p/" 'index(substr($0, length($1) + 2), d) == 1 { k += int(($1 + 4095) / 4096) * 4 } END { printf "%.0f", k + 4 }')
+    else
+      continue   # real du prints "No such file or directory" on stderr (hidden by 2>/dev/null)
+    fi
+    printf '%s\t%s\n' "$kb" "$p"
+  done | crlf
+}
+
+do_rm() {  # rm -f 'p' && [ ! -e 'p' ] && echo FS_GONE   (or rm -rf)
+  local cmd=$1 first p opt
+  first=${cmd%% && *}
+  eval "set -- $first"
+  [ $# -eq 3 ] && [ "$1" = rm ] || unknown "$cmd"
+  opt=$2; p=$3
+  case "$opt" in -f|-rf) ;; *) unknown "$cmd" ;; esac
+  [ "$cmd" = "rm $opt $(q "$p") && [ ! -e $(q "$p") ] && echo FS_GONE" ] || unknown "$cmd"
+  if [ "$opt" = -f ] && is_dir "$p"; then echo "rm: $p: Is a directory" >&2; return 1; fi
+  exists "$p" || printf '%s\n' "$p" >>"$ST/rm_missing"
+  printf 'rm %s\n' "$p" >>"$ST/changes"
+  if grep -qxF -- "$p" "$FIX/rm-fail.txt" 2>/dev/null; then
+    echo "rm: $p: Permission denied" >&2
+    return 1
+  fi
+  printf '%s\n' "$p" >>"$ST/deleted"
+  echo FS_GONE | crlf
+}
+
+do_exists() {  # [ -e 'p' ] && echo FS_OK
+  local cmd=$1 body p
+  body=${cmd% && echo FS_OK}
+  [ "$body" != "$cmd" ] || unknown "$cmd"
+  eval "set -- $body"
+  [ $# -eq 4 ] && [ "$1" = "[" ] && [ "$2" = "-e" ] && [ "$4" = "]" ] || unknown "$cmd"
+  p=$3
+  [ "$cmd" = "[ -e $(q "$p") ] && echo FS_OK" ] || unknown "$cmd"
+  if exists "$p"; then echo FS_OK | crlf; fi
+}
+
+do_shell() {
+  local cmd=$1
+  case "$cmd" in
+    "$C_DF") do_df ;;
+    "$C_TRIM")
+      echo "trim-caches" >>"$ST/changes"
+      touch "$ST/trimmed"
+      [ -s "$FIX/trim.txt" ] && crlf <"$FIX/trim.txt"
+      return 0 ;;
+    "$C_DISK") crlf <"$FIX/diskstats.txt" ;;
+    "$C_PKGS")
+      if flag PKGS_BROKEN; then echo "cmd: Failure calling service package: Broken pipe (32)" >&2; return 255; fi
+      crlf <"$FIX/packages.txt" ;;
+    "$C_SCAN") find_files 'index(p, "/sdcard/") == 1 && (s > 10485760 || b ~ /^\.trashed-/)' ;;
+    "$C_MIUIBIN") find_files 'index(p, "/sdcard/MIUI/Gallery/cloud/.trashBin/") == 1 || index(p, "/sdcard/Android/media/com.miui.gallery/cloud/.trashBin/") == 1' ;;
+    "$C_APK") find_files '(index(p, "/sdcard/Download/") == 1 || index(p, "/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/") == 1 || index(p, "/sdcard/WhatsApp/Media/WhatsApp Documents/") == 1 || index(p, "/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Documents/") == 1 || index(p, "/sdcard/Telegram/") == 1 || index(p, "/sdcard/Android/data/org.telegram.messenger/files/Telegram/") == 1 || index(p, "/sdcard/Android/data/org.telegram.messenger.web/files/Telegram/") == 1) && tolower(b) ~ /\.(apk|xapk|apks)$/' ;;
+    "$C_WA") find_files '(d == "/sdcard/Android/media/com.whatsapp/WhatsApp/Databases" || d == "/sdcard/WhatsApp/Databases" || d == "/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business/Databases" || d == "/sdcard/WhatsApp Business/Databases") && b ~ /^msgstore/' ;;
+    "$C_LOGS") find_files 'index(p, "/sdcard/MIUI/debug_log/") == 1' ;;
+    "$C_LSDATA") if flag LSDATA_DENIED || ! is_dir /sdcard/Android/data; then echo FS_DENIED | crlf; else do_ls /sdcard/Android/data; fi ;;
+    "$C_LSMEDIA") if flag LSMEDIA_DENIED || ! is_dir /sdcard/Android/media; then echo FS_DENIED | crlf; else do_ls /sdcard/Android/media; fi ;;
+    "du -s "*) do_du "$cmd" ;;
+    "rm -f "*|"rm -rf "*) do_rm "$cmd" ;;
+    "[ -e "*) do_exists "$cmd" ;;
+    *) unknown "$cmd" ;;
+  esac
+}
+
+do_pull() {  # adb pull REMOTE LOCAL
+  local r=$1 l=$2 size t f
+  size=$(file_size "$r")
+  if [ -n "$size" ]; then
+    if grep -qxF -- "$r" "$FIX/pull-fail.txt" 2>/dev/null; then
+      echo "adb: error: failed to copy '$r' to '$l': remote read failed: Operation not permitted" >&2
+      return 1
+    fi
+    t=$l
+    case "$l" in */) t="$l${r##*/}" ;; *) [ -d "$l" ] && t="$l/${r##*/}" ;; esac
+    make_sparse "$t" "$size"
+    printf '%s\t%s\n' "$r" "$t" >>"$ST/pulls"
+    echo "$r: 1 file pulled, 0 skipped. 38.4 MB/s ($size bytes in 0.105s)"
+    return 0
+  fi
+  if is_dir "$r"; then
+    [ -d "$l" ] || { echo "adb: error: target '$l' is not a directory" >&2; return 1; }
+    t="${l%/}/${r##*/}"
+    mkdir -p "$t"
+    cur_files | awk -v d="$r/" '{ p = substr($0, length($1) + 2); if (index(p, d) == 1) print $1 "\t" substr(p, length(d) + 1) }' >"$ST/pull.tmp"
+    while IFS=$'\t' read -r size f <&3; do make_sparse "$t/$f" "$size"; done 3<"$ST/pull.tmp"
+    printf '%s\t%s\n' "$r" "$t" >>"$ST/pulls"
+    echo "$r/: 1 file pulled, 0 skipped."
+    return 0
+  fi
+  echo "adb: error: failed to stat remote object '$r': No such file or directory" >&2
+  return 1
+}
+
+do_push() {  # adb push LOCAL REMOTE
+  local l=$1 r=$2 t
+  [ -e "$l" ] || { echo "adb: error: cannot stat '$l': No such file or directory" >&2; return 1; }
+  case "$r" in /sdcard/*) ;; *) unknown "push $l $r" ;; esac
+  t=$r
+  case "$r" in */) t="$r${l##*/}" ;; esac
+  undelete "$t"
+  printf 'push %s\n' "$t" >>"$ST/changes"
+  printf '%s\t%s\n' "$l" "$t" >>"$ST/pushes"
+  echo "$l: 1 file pushed, 0 skipped. 41.0 MB/s"
+}
+
+case "${1:-}" in
+  get-state) echo device ;;
+  shell) shift; do_shell "$*" ;;
+  pull) [ $# -eq 3 ] || unknown "$*"; do_pull "$2" "$3" ;;
+  push) [ $# -eq 3 ] || unknown "$*"; do_push "$2" "$3" ;;
+  *) unknown "$*" ;;
+esac

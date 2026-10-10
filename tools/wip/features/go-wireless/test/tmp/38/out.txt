@@ -1,0 +1,4 @@
+Found a device, but it is not ready:
+  a1b2c3d4: connected but not answering. Unplug the cable and plug it back in. If that does not help,
+     turn "USB debugging" off and on again in Developer options.
+RC=1 PICKED=unset

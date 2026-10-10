@@ -1,0 +1,4 @@
+ANDROID_SERIAL is set to 'ZZZ999', but no device with that name is connected.
+Plug it in (check the name with 'adb devices'), or run 'unset ANDROID_SERIAL'
+and start this script again to choose from what is connected.
+RC=1 PICKED=ZZZ999

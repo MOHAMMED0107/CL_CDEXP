@@ -1,0 +1,29 @@
+No phone found. Check the cable, unlock the phone, and accept the 'Allow USB debugging' prompt.
+List of devices attached
+
+No cable? Android 11+ phones can also connect over Wi-Fi ("Wireless debugging").
+
+Android 11 and newer (yours too) have their own Wi-Fi connection, called "Wireless debugging".
+It is encrypted, but needs a few taps on the phone:
+  1. Make sure the phone and this computer are on the same Wi-Fi.
+  2. On the phone open Settings > Additional settings > Developer options.
+  3. Turn on "Wireless debugging". If it asks "Allow wireless debugging on this network?",
+     tap Allow (only on your own Wi-Fi).
+  4. Tap the words "Wireless debugging" (not the switch) to open its page.
+  5. Tap "Pair device with pairing code". A box shows a 6-digit "Wi-Fi pairing code"
+     and an "IP address & Port", for example 192.168.1.42:37123.
+  6. Keep that box open and type both here when asked.
+  7. Then look at the Wireless debugging page again. Its "IP address & Port" has a
+     DIFFERENT port number (for example 192.168.1.42:41567). Type that when asked.
+  (By hand it is: adb pair IP:PORT CODE, then adb connect IP:PORT)
+  Wireless debugging switches itself off when the phone leaves this Wi-Fi or restarts.
+Pairing with 192.168.1.42:37123 ...
+Paired. This computer is now on the phone's list of trusted computers.
+(To remove it later: Developer options > Wireless debugging > Paired devices >
+ this computer > Forget. This script cannot do that part for you.)
+Now look at the top of the "Wireless debugging" page on the phone: "IP address & Port".
+Connecting to 192.168.1.42:41567 ...
+Done: connected over Wi-Fi to Redmi Note 9 Pro at 192.168.1.42:41567.
+You can unplug the USB cable. Every option in this menu now works over Wi-Fi.
+RC=0 PICKED=192.168.1.42:41567
+MODEL=Redmi Note 9 Pro

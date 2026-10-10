@@ -1,0 +1,6 @@
+Phone found: Redmi Note 9 Pro (over USB cable, serial a1b2c3d4).
+Also connected, but not used:
+  R58N12ABCDE: waiting for your OK. Unlock the phone and tap "Allow" on the "Allow USB debugging?"
+     prompt (tick "Always allow from this computer"). No prompt? Unplug and plug the cable back in.
+RC=0 PICKED=a1b2c3d4
+MODEL=Redmi Note 9 Pro

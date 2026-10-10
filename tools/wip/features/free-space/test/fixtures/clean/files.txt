@@ -1,0 +1,6 @@
+4012345 /sdcard/DCIM/Camera/IMG_20241001_090000.jpg
+3012345 /sdcard/DCIM/Camera/IMG_20241001_090100.jpg
+2048000 /sdcard/Download/Aadhaar card.pdf
+204800 /sdcard/WhatsApp/Media/WhatsApp Images/IMG-20210301-WA0000.jpg
+245760 /sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/IMG-20240901-WA0001.jpg
+41943040 /sdcard/Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt14

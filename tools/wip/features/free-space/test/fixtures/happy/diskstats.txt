@@ -1,0 +1,19 @@
+Latency: 3ms [512B Data Write]
+Recent Disk Write Speed (kB/s) = 41356
+Data-Free: 23880832K / 110541900K total = 21% free
+Cache-Free: 23880832K / 110541900K total = 21% free
+System-Free: 0K / 3586244K total = 0% free
+File-based Encryption: true
+App Size: 9123456789
+App Data Size: 21345678901
+App Cache Size: 2298765432
+Photos Size: 9812345678
+Videos Size: 6543210987
+Audio Size: 312345678
+Downloads Size: 2512345678
+System Size: 15123456789
+Other Size: 4123456789
+Package Names: ["com.whatsapp","com.google.android.youtube","com.instagram.android","com.tencent.ig","com.android.chrome","org.telegram.messenger","com.google.android.gms","com.phonepe.app","com.miui.gallery","com.google.android.apps.messaging"]
+App Sizes: [98765432,187654321,154321098,1987654321,312345678,76543210,412345678,143210987,65432109,54321098]
+App Data Sizes: [5123456789,2345678901,1765432109,1234567890,987654321,1876543210,876543210,543210987,312345678,123456789]
+Cache Sizes: [312345678,876543210,412345678,98765432,201234567,198765432,87654321,54321098,32109876,12345678]

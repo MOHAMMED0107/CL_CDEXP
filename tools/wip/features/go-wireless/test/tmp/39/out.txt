@@ -1,0 +1,4 @@
+Found a device, but it is not ready:
+  a1b2c3d4: this computer is not allowed to use the phone's USB connection (common on Linux).
+     Set up the USB rules from developer.android.com/studio/run/device, then try again.
+RC=1 PICKED=unset

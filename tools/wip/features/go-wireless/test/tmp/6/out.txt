@@ -1,0 +1,8 @@
+== Use the phone over Wi-Fi (no cable) ==
+This lets every option in this menu reach your phone over Wi-Fi, so you can unplug the cable.
+Could not find your phone's Wi-Fi address.
+Most likely the phone is not connected to Wi-Fi. Connect it to the same Wi-Fi as this
+computer (Settings > Wi-Fi), then choose this option again.
+If it IS on Wi-Fi, you can type the address yourself: on the phone open Settings > Wi-Fi,
+tap your Wi-Fi name and look for "IP address" (four numbers, e.g. 192.168.1.42).
+Stopped. Nothing was changed.

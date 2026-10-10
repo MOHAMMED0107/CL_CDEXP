@@ -1,0 +1,5 @@
+Latency: 4ms [512B Data Write]
+Data-Free: 23880832K / 110541900K total = 21% free
+Cache-Free: 23880832K / 110541900K total = 21% free
+System-Free: 0K / 3586244K total = 0% free
+File-based Encryption: true

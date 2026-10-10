@@ -1,0 +1,1 @@
+100.71.64.0/20 dev rmnet_data2 proto kernel scope link src 100.71.66.157 

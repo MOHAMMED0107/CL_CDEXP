@@ -1,0 +1,5 @@
+env=a1b2c3d4	s=	get-state 
+env=a1b2c3d4	s=a1b2c3d4	get-state 
+env=a1b2c3d4	s=a1b2c3d4	shell getprop ro.serialno
+env=a1b2c3d4	s=	devices 
+env=a1b2c3d4	s=192.168.1.42:5555	shell getprop ro.serialno
