@@ -91,10 +91,10 @@ do_df() {
   } | crlf
 }
 
-do_ls() {  # immediate children of a folder, sorted like toybox ls
+do_ls() {  # immediate children of a folder, sorted like toybox ls (names starting with "." hidden)
   local dir=$1
   { cur_files | awk '{ print substr($0, length($1) + 2) }'; cur_dirs; } \
-    | awk -v d="$dir/" 'index($0, d) == 1 { r = substr($0, length(d) + 1); sub(/\/.*/, "", r); if (r != "") print r }' \
+    | awk -v d="$dir/" 'index($0, d) == 1 { r = substr($0, length(d) + 1); sub(/\/.*/, "", r); if (r != "" && substr(r, 1, 1) != ".") print r }' \
     | LC_ALL=C sort -u | crlf
 }
 

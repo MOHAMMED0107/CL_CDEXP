@@ -169,6 +169,15 @@ ok "clear message" 'has "not connected to Wi-Fi"'
 ok "does not use the mobile-data address" 'lacks "100.71.66.157"'
 ok "nothing changed" 'unchanged && no_changes_sent'
 
+begin "Wi-Fi joined but no address from the router (169.254.x.x)"
+redmi_usb
+pset p1 wlan_addr ip-addr-wlan0-linklocal.txt
+pset p1 wlan_route ip-route-mobile.txt
+snapshot
+run 'go_wireless' '\n'
+ok "treated as not on Wi-Fi" 'has "Could not find your phone'"'"'s Wi-Fi address" && lacks "169.254"'
+ok "nothing changed" 'unchanged && no_changes_sent'
+
 begin "Wi-Fi off (wlan0 missing, empty route)"
 redmi_usb
 pset p1 wlan_addr ip-addr-wlan0-missing.err
@@ -435,6 +444,11 @@ ok "prints adb devices" 'has "List of devices attached"'
 ok "offers Wireless debugging" 'has "No cable?"'
 ok "returns 1" 'has "RC=1 PICKED=unset"'
 
+begin "pick: no device, user presses Enter"
+knob startup_ok
+run "$PICK" '\n\n\n'
+ok "Enter means no pairing" 'has "RC=1 PICKED=unset" && log_lacks "	(pair|connect) "'
+
 begin "pick: no device, user connects over Wi-Fi with pairing"
 phone p1 a1b2c3d4 "Redmi Note 9 Pro" "Redmi Note 9 Pro" 192.168.1.42
 knob startup_ok
@@ -564,45 +578,96 @@ ok "asked which device" 'has "Which one should this script use?"'
 ok "then switched the chosen one" 'log_has "s=a1b2c3d4	tcpip 5555" && has "AFTER=192.168.1.42:5555"'
 
 # =====================================================================
-# Integration: main script with its startup check replaced as notes.md says
+# Integration: the real harness/integrate.py on a private copy, then the real menu
 # =====================================================================
 
-build_integrated() {
-  # Paste feature.sh after `need adb`, replace the startup check with gw_pick_device.
-  awk -v feat="$FEATURE" '
-    /^while true; do$/ { exit }
-    /^if ! adb get-state >\/dev\/null 2>&1; then$/ { skip = 1; next }
-    skip && /^fi$/ { skip = 0; print "gw_pick_device || exit 1"; next }
-    skip { next }
-    { print }
-    /^need adb$/ { while ((getline l < feat) > 0) print l }
-  ' "$MAIN" >"$1"
-  printf '\n%s\n' "$2" >>"$1"
-}
+INTEGRATE="$SCRATCH/harness/integrate.py"
 
-begin "integration: two devices at startup, pick 2, then options run on it"
+# Build an integrated phone-pro.sh in $1 (a folder) the way the project will.
+integrate_copy() {
+  mkdir -p "$1/features/go-wireless"
+  cp "$MAIN" "$1/phone-pro.sh"
+  cp "$FEATURE" "$1/features/go-wireless/feature.sh"
+  if command -v python3 >/dev/null 2>&1 && [ -f "$INTEGRATE" ]; then
+    python3 "$INTEGRATE" "$1" go-wireless >/dev/null
+  else
+    # Same result as integrate.py for go-wireless alone (used when python3 is missing).
+    awk -v feat="$FEATURE" '
+      /^if ! adb get-state >\/dev\/null 2>&1; then$/ { skip = 1; next }
+      skip && /^fi$/ { skip = 2; next }
+      skip == 2 && /^$/ { skip = 0; next }
+      skip == 1 { next }
+      /^while true; do$/ {
+        print "# ---------- go-wireless ----------"
+        while ((getline l < feat) > 0) print l
+        print ""; print "# ==== startup ===="; print "gw_pick_device || exit 1"; print ""
+      }
+      /^ 1\) Health report/ { print "  -- Basics --" }
+      /^ q\) Quit$/ { print "  -- Top picks --"; print "14) Go wireless: use this script over Wi-Fi, no cable (or back to USB)" }
+      { print }
+      /^    13\) battery_log ;;$/ { print "    14) go_wireless ;;" }
+    ' "$1/phone-pro.sh" >"$1/p.new" && mv "$1/p.new" "$1/phone-pro.sh"
+  fi
+}
+run_main() { printf '%b' "$2" | env FAKE_ADB_DIR="$F" PATH="$BIN:$PATH" HOME="$H" bash "$1" >"$OUT" 2>&1; RC=$?; }
+# line number of the first/last adb log line matching a regex
+first_line() { grep -nE -- "$1" "$F/log" | head -n 1 | cut -d: -f1; }
+last_line() { grep -nE -- "$1" "$F/log" | tail -n 1 | cut -d: -f1; }
+
+begin "integration: two phones, pick 1, menu 14 -> Wi-Fi, health over Wi-Fi, 14 -> back, health over USB"
 redmi_usb
 phone p2 R58N12ABCDE "SM-A525F" "" 192.168.1.77
 transport R58N12ABCDE device p2
-build_integrated "$WORK/$N/integrated.sh" 'echo "PICKED=$ANDROID_SERIAL"; echo "MODEL=$(ash getprop ro.product.model)"'
-printf '2\n' | env FAKE_ADB_DIR="$F" PATH="$BIN:$PATH" HOME="$H" bash "$WORK/$N/integrated.sh" >"$OUT" 2>&1
-RC=$?
-ok "startup check replaced" '! grep -q "^if ! adb get-state" "$WORK/$N/integrated.sh" && grep -q "^gw_pick_device || exit 1$" "$WORK/$N/integrated.sh"'
-ok "runs and picks" '[ "$RC" = 0 ] && has "PICKED=R58N12ABCDE" && has "MODEL=SM-A525F"'
+S="$WORK/$N/S"
+integrate_copy "$S"
+run_main "$S/phone-pro.sh" '1\n14\ny\n1\n14\ny\n1\nq\n'
+ok "startup check replaced by gw_pick_device" '! grep -q "^if ! adb get-state" "$S/phone-pro.sh" && grep -q "^gw_pick_device || exit 1$" "$S/phone-pro.sh"'
+ok "menu shows option 14" 'has "14) Go wireless"'
+ok "exit 0 at q" '[ "$RC" = 0 ]'
+ok "picked phone 1 at startup" 'has "Using: Redmi Note 9 Pro (over USB cable, serial a1b2c3d4)."'
+ok "switched to Wi-Fi from the menu" 'has "Done: connected over Wi-Fi to Redmi Note 9 Pro at 192.168.1.42:5555."'
+ok "health report ran over Wi-Fi" 'log_has "^env=192.168.1.42:5555	s=	shell getprop ro.product.manufacturer"'
+ok "back to USB from the menu" 'has "Back on the USB cable: Redmi Note 9 Pro."'
+ok "second phone still attached, so ANDROID_SERIAL points at the cable" '[ "$(last_line "^env=a1b2c3d4	s=	shell getprop ro.product.manufacturer")" -gt "$(first_line "disconnect 192.168.1.42:5555")" ]'
+ok "the other phone was never touched" 'log_lacks "s=R58N12ABCDE	(tcpip|usb)" && log_lacks "^env=R58N12ABCDE"'
+ok "phone back to USB-only" '[ "$(tcpport)" = 0 ]'
 
 begin "integration: no device at startup exits 1 with the old message"
-build_integrated "$WORK/$N/integrated.sh" 'echo SHOULD_NOT_RUN'
-printf '' | env FAKE_ADB_DIR="$F" PATH="$BIN:$PATH" HOME="$H" bash "$WORK/$N/integrated.sh" >"$OUT" 2>&1
-RC=$?
-ok "exit 1" '[ "$RC" = 1 ] && has "No phone found" && lacks SHOULD_NOT_RUN'
+S="$WORK/$N/S"
+integrate_copy "$S"
+run_main "$S/phone-pro.sh" ''
+ok "exit 1, menu never shown" '[ "$RC" = 1 ] && has "No phone found" && lacks "==== Phone Pro ===="'
 
 begin "integration: unauthorized at startup exits 1 with advice"
 phone p1 a1b2c3d4 "Redmi Note 9 Pro" "Redmi Note 9 Pro" 192.168.1.42
 transport a1b2c3d4 unauthorized p1
-build_integrated "$WORK/$N/integrated.sh" 'echo SHOULD_NOT_RUN'
-printf 'q\n' | env FAKE_ADB_DIR="$F" PATH="$BIN:$PATH" HOME="$H" bash "$WORK/$N/integrated.sh" >"$OUT" 2>&1
-RC=$?
-ok "exit 1 with advice" '[ "$RC" = 1 ] && has "tap \"Allow\"" && lacks SHOULD_NOT_RUN'
+S="$WORK/$N/S"
+integrate_copy "$S"
+run_main "$S/phone-pro.sh" 'q\n'
+ok "exit 1 with advice" '[ "$RC" = 1 ] && has "tap \"Allow\"" && lacks "==== Phone Pro ===="'
+
+begin "integration: one phone, startup is quiet and automatic"
+redmi_usb
+S="$WORK/$N/S"
+integrate_copy "$S"
+run_main "$S/phone-pro.sh" 'q\n'
+ok "one line, then the menu" '[ "$RC" = 0 ] && has "Phone found: Redmi Note 9 Pro" && has "==== Phone Pro ===="'
+
+begin "integration: gw_pick_device also works pasted early (before ash/TMPD exist)"
+redmi_usb
+phone p2 R58N12ABCDE "SM-A525F" "" 192.168.1.77
+transport R58N12ABCDE device p2
+awk -v feat="$FEATURE" '
+  /^while true; do$/ { exit }
+  /^if ! adb get-state >\/dev\/null 2>&1; then$/ { skip = 1; next }
+  skip && /^fi$/ { skip = 0; print "gw_pick_device || exit 1"; next }
+  skip { next }
+  { print }
+  /^need adb$/ { while ((getline l < feat) > 0) print l }
+' "$MAIN" >"$WORK/$N/early.sh"
+printf '\n%s\n' 'echo "PICKED=$ANDROID_SERIAL"; echo "MODEL=$(ash getprop ro.product.model)"' >>"$WORK/$N/early.sh"
+run_main "$WORK/$N/early.sh" '2\n'
+ok "runs and picks" '[ "$RC" = 0 ] && has "PICKED=R58N12ABCDE" && has "MODEL=SM-A525F"'
 
 # =====================================================================
 # Static checks on feature.sh
@@ -639,8 +704,9 @@ ok "no awk regex intervals" '! printf "%s\n" "$code" | grep -Eq "/[^/]*[]a-z)][{
 ok "line-reading loops read from fd 3" '[ -z "$(printf "%s\n" "$code" | grep -E "while .*read " | grep -v "<&3")" ]'
 ok "every adb call keeps the keyboard (</dev/null)" '[ -z "$(printf "%s\n" "$code" | grep -E "(^|[^_a-z])adb " | grep -v "</dev/null" | grep -v "^ *echo" | grep -vE "(say|echo).*\"")" ]'
 
-SC=""
-if command -v shellcheck >/dev/null 2>&1; then SC=shellcheck; elif [ -x "$HERE/.tools/bin/shellcheck" ]; then SC="$HERE/.tools/bin/shellcheck"; fi
+# Optional lint: runs when shellcheck is installed (or SHELLCHECK=/path/to/shellcheck is set).
+SC=${SHELLCHECK:-}
+if [ -z "$SC" ] && command -v shellcheck >/dev/null 2>&1; then SC=shellcheck; fi
 if [ -n "$SC" ]; then
   begin "static: shellcheck"
   # SC2034: GW_ constants used by other files; SC2154/SC2153: ash/TMPD come from the main script.

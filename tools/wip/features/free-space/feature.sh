@@ -62,7 +62,11 @@ function rel(p) { if (index(p, "/sdcard/") == 1) return substr(p, 9); return p }
 fs_hum() { awk -v b="${1:-0}" "$fs_awk_lib"'BEGIN { print hum(b + 0) }'; }
 fs_rel() { case "$1" in /sdcard/*) printf '%s\n' "${1#/sdcard/}" ;; *) printf '%s\n' "$1" ;; esac; }
 # Quote a path for the phone's shell: wrap in single quotes, escape single quotes inside.
-fs_q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+fs_q() {
+  local e
+  e=$(printf '%s' "$1" | sed "s/'/'\\\\''/g")
+  printf "'%s'" "$e"
+}
 
 # y/N question; Enter (or no input at all) means No.
 fs_ask() {
@@ -125,7 +129,7 @@ fs_show_df() {
 # ---- Undo: put back what an earlier run copied to this computer before deleting ----
 fs_offer_restore() {
   [ -s "$fs_undo" ] || return 0
-  local n total base lp remote kind bytes target ok=0 bad=0
+  local n total base lp remote kind bytes target q check ok=0 bad=0
   n=$(awk 'END { print NR }' "$fs_undo")
   total=$(awk -F'\t' '{ s += $5 } END { printf "%.0f", s }' "$fs_undo")
   echo
@@ -147,8 +151,12 @@ fs_offer_restore() {
     fi
     target=$remote
     [ "$kind" = d ] && target="${remote%/*}/"
-    if (cd "$base" && adb push "$lp" "$target" </dev/null >/dev/null 2>&1) &&
-       [ "$(ash "[ -e $(fs_q "$remote") ] && echo FS_OK")" = FS_OK ]; then
+    check=""
+    if (cd "$base" && adb push "$lp" "$target" </dev/null >/dev/null 2>&1); then
+      q=$(fs_q "$remote")
+      check=$(ash "[ -e $q ] && echo FS_OK")
+    fi
+    if [ "$check" = FS_OK ]; then
       ok=$((ok + 1))
     else
       echo "  Could not put back $(fs_rel "$remote") (the copy is still in $base/$lp)."
@@ -183,7 +191,8 @@ fs_step_cache() {
   out=$(ash "$fs_cmd_trim")
   if printf '%s\n' "$out" | grep -qi -E 'exception|error|denied|not found|unknown'; then
     echo "  The phone refused to clear the cache over USB, so nothing was changed."
-    echo "  Reason given: $(printf '%s\n' "$out" | grep -i -E 'exception|error|denied|not found|unknown' | tail -n 1 | cut -c 1-150)"
+    out=$(printf '%s\n' "$out" | grep -i -E 'exception|error|denied|not found|unknown' | tail -n 1 | cut -c 1-150)
+    echo "  Reason given: $out"
     echo "  You can do it on the phone instead: Security app > Cleaner."
     return 0
   fi
@@ -371,6 +380,7 @@ fs_delete_list() {  # list title copy(0/1) noun count
     echo "   Could not create the folder $base/$fs_junk_dir, so nothing was deleted."
     return 0
   fi
+  [ "$copy" = 1 ] && echo "   Copying to this computer, then deleting (big files can take a few minutes)..."
   while IFS="$fs_tab" read -r bytes path kind <&3; do
     [ -n "$path" ] || continue
     if ! fs_safe_path "$path" "$kind"; then
@@ -420,7 +430,11 @@ fs_junk_trash() {
       n = split($2, a, "/"); b = tolower(a[n]); sub(/^\.trashed-/, "", b)
       d = (b + 0 - now) / 86400; if (d > m) m = d
     } END { if (m > 0) printf "%.0f", m + 0.5 }' "$TMPD/fs_c_trash")
-  if [ -n "$days" ]; then days="within $days days"; else days="any day now"; fi
+  case "$days" in
+    '') days="any day now" ;;
+    1) days="within a day" ;;
+    *) days="within $days days" ;;
+  esac
   fs_offer_delete "$TMPD/fs_c_trash" "Android's trash (photos, videos and files you deleted)" "file" \
     "Android keeps deleted items for 30 days, then removes them by itself ($days anyway)." \
     "Deleting them now just frees the space sooner."
@@ -501,7 +515,7 @@ fs_junk_wa() {
 
 fs_junk_leftovers() {
   local npk cmd p tag denied=""
-  ash "$fs_cmd_pkgs" | sed 's/^package://' | pkgs_only | sort -u >"$TMPD/fs_pkgs"
+  ash "$fs_cmd_pkgs" 2>/dev/null | sed 's/^package://' | pkgs_only | sort -u >"$TMPD/fs_pkgs"
   : >"$TMPD/fs_c_left"
   npk=$(awk 'END { print NR }' "$TMPD/fs_pkgs")
   if [ "$npk" -lt 20 ]; then
@@ -563,7 +577,7 @@ fs_step_junk() {
 }
 
 fs_summary() {
-  local now_df=$1 start_df=$2
+  local now_df=$1 start_df=$2 was=""
   echo
   echo "== Summary =="
   [ -z "$fs_trim_freed" ] || echo "  Temporary cache cleared: $(fs_hum "$fs_trim_freed") came back."
@@ -575,11 +589,13 @@ fs_summary() {
   fi
   if [ -n "$now_df" ]; then
     set -- $now_df
-    if [ -n "$start_df" ]; then
-      echo "  Free space now: $(fs_hum $(($3 * 1024))) of $(fs_hum $(($1 * 1024)))   (was $(fs_hum $(($(echo "$start_df" | awk '{ print $3 }') * 1024))) at the start)."
-    else
-      echo "  Free space now: $(fs_hum $(($3 * 1024))) of $(fs_hum $(($1 * 1024)))."
+    if [ -n "$start_df" ] && [ "$start_df" != "$now_df" ]; then
+      set -- $start_df
+      was=$(fs_hum $(($3 * 1024)))
+      was=" (it was $was at the start)"
+      set -- $now_df
     fi
+    echo "  Free space now: $(fs_hum $(($3 * 1024))) of $(fs_hum $(($1 * 1024)))$was."
   fi
   if [ "$fs_copied" = 1 ]; then
     echo "  Copies of deleted files: $(pwd)/$fs_junk_dir"

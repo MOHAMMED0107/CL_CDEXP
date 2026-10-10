@@ -1,2 +1,4 @@
-tools/wip/features/*/test/tmp/
-tools/wip/features/*/review-tmp/
+tools/wip/**/test/tmp/
+tools/wip/**/.work/
+tools/wip/**/review-tmp/
+tools/wip/**/tmp/

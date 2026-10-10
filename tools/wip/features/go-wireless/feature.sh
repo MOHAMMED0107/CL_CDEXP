@@ -143,6 +143,8 @@ gw_wifi_ip() {
         else if (d ~ /^wlan/) { if (w == "") w = s } }
       END { if (w0 != "") print w0; else if (w != "") print w }')
   fi
+  # 169.254.x.x means the Wi-Fi router never gave the phone an address.
+  case "$ip" in 169.254.* | 0.*) return 1 ;; esac
   gw_valid_ip "$ip" && echo "$ip"
 }
 

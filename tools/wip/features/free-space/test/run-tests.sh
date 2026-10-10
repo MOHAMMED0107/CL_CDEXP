@@ -178,7 +178,7 @@ check "every copied item was copied before it was deleted" awk '
 check "undo file lists the 16 copies" lines "$H/phone-pro-free-space-undo.txt" 16
 check "undo file rows: base, copy, phone path, kind, bytes" awk -F'\t' -v c="$C" 'NF != 5 || $1 != c || $2 !~ /^phone-junk-/ || $3 !~ /^\/sdcard\// || ($4 != "f" && $4 != "d") || $5 !~ /^[0-9]+$/ { bad = 1 } END { exit bad }' "$H/phone-pro-free-space-undo.txt"
 check "log lists the 20 deleted items" lines "$H/phone-pro-free-space-log.txt" 20
-check "summary shows junk freed and new free space" sh -c 'grep -q "Hidden junk deleted: 962 MB." "$1" && grep -q "Free space now: 25.5 GB of 105.4 GB   (was 22.8 GB at the start)." "$1"' _ "$O"
+check "summary shows junk freed and new free space" sh -c 'grep -q "Hidden junk deleted: 962 MB." "$1" && grep -q "Free space now: 25.5 GB of 105.4 GB (it was 22.8 GB at the start)." "$1"' _ "$O"
 cp "$H/phone-pro-free-space-undo.txt" "$WORK/undo.saved"
 cp "$S/changes" "$WORK/changes.saved"
 
@@ -226,6 +226,17 @@ tail -n +$(( $(awk 'END { print NR }' "$WORK/changes.saved") + 1 )) "$S/changes"
 check "[yes] the only new phone changes are the 16 pushes" sh -c '[ "$(grep -vc "^push " "$1")" = 0 ] && [ "$(grep -c "^push " "$1")" = 16 ]' _ "$WORK/changes.new"
 check "[yes] put-back trash shows up again (and is kept on Enter)" has "$O" "-- Android's trash (photos, videos and files you deleted): 3 files, 306 MB --"
 
+# A copy that went missing on the computer: the rest is put back, that one stays listed.
+S4="$WORK/partial/state"; H4="$WORK/partial/home"; C4="$WORK/partial/cwd"
+run partial-setup "$FX" "$S4" "$H4" "$C4" "$HAPPY_ANSWERS"
+rm -f "$C4/phone-junk-$TODAY/sdcard/Download/WhatsApp_Plus_v17.60.apk"
+run partial "$FX" "$S4" "$H4" "$C4" "y\n$NO_ANSWERS"
+check "[partial] exit code 0" rc_is partial 0
+check "[partial] missing copy reported" has "$WORK/partial.out" "Copy not found, skipped: $C4/phone-junk-$TODAY/sdcard/Download/WhatsApp_Plus_v17.60.apk"
+check "[partial] 15 of 16 put back" has "$WORK/partial.out" "Put back 15 of 16 item(s)."
+check "[partial] the missing one stays listed for next time" sh -c 'lines() { [ "$(awk "END { print NR }" "$1")" = "$2" ]; }; lines "$1" 1 && grep -q "WhatsApp_Plus_v17.60.apk" "$1"' _ "$H4/phone-pro-free-space-undo.txt"
+check "[partial] it is still deleted on the phone" grep -qx "/sdcard/Download/WhatsApp_Plus_v17.60.apk" "$S4/deleted"
+
 # ------------------------------------------------------------------------------------------
 echo "== 5. Unreadable / unsupported data (permission denied, no measurements, refused trim) =="
 FXB=$(prep broken)
@@ -248,6 +259,7 @@ check "nothing deleted" empty "$SB/deleted"
 check "nothing copied" empty "$SB/pulls"
 check "only the (refused) trim was attempted" sh -c '[ "$(cat "$1")" = trim-caches ]' _ "$SB/changes"
 check "summary still printed" has "$O" "No junk was deleted."
+check "raw phone error text is not shown" hasnt "$O" "Failure calling service package"
 
 FXC=$(prep clean)
 SC="$WORK/clean/state"
@@ -264,6 +276,7 @@ check "[clean phone] Android/data refused: explained and skipped" has "$O" "Coul
 check "[clean phone] newest WhatsApp backup note even with nothing to delete" has "$O" "Always kept (newest backup): Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt14"
 check "[clean phone] all 6 junk kinds empty" sh -c '[ "$(grep -c ": nothing found --$" "$1")" = 6 ]' _ "$O"
 check "[clean phone] nothing changed" empty "$SC/changes"
+check "[clean phone] unchanged free space shown once" has "$O" "Free space now: 22.8 GB of 105.4 GB."
 
 # ------------------------------------------------------------------------------------------
 echo "== 6. Portable awk: same results with BWK awk (macOS) and gawk --posix =="
@@ -305,6 +318,32 @@ EOF
 comm -13 "$L/before" "$L/after" | grep -v -e '^BASH' -e '^_$' >"$L/new"
 check "free_space ran" has "$L/out" "== Summary =="
 check "only fs_* globals were created" sh -c '! grep -v "^fs_" "$1"' _ "$L/new"
+
+# ------------------------------------------------------------------------------------------
+echo "== 8. On-phone commands: valid shell, and the fake answers like real find/stat/ls would =="
+# Build the happy fixture as a real folder tree (sparse files), run the feature's exact command
+# strings with dash + find/stat/ls on it, and compare with the fake adb's answers.
+T="$WORK/sdtree"
+while read -r size path <&3; do
+  mkdir -p "$T$(dirname "$path")"
+  dd if=/dev/zero of="$T$path" bs=1 count=0 seek="$size" 2>/dev/null
+done 3<"$FX/files.txt"
+while read -r d <&3; do mkdir -p "$T$d"; done 3<"$FX/dirs.txt"
+getcmd() { HOME="$WORK" bash -c '. "$1"; eval "printf \"%s\" \"\$$2\""' _ "$FEATURE" "$1"; }
+for v in fs_cmd_scan fs_cmd_miuibin fs_cmd_apk fs_cmd_wa fs_cmd_logs fs_cmd_lsdata fs_cmd_lsmedia; do
+  cmd=$(getcmd "$v")
+  local_cmd=$(printf '%s' "$cmd" | sed "s#/sdcard#$T/sdcard#g")
+  ( cd / && dash -c "$local_cmd" ) | sed -e "s#$T##g" -e 's#//*#/#g' | LC_ALL=C sort >"$WORK/real.$v"
+  FAKE_FIXTURES="$FX" FAKE_STATE="$WORK/xstate" "$BIN/adb" shell "$cmd" | tr -d '\r' | LC_ALL=C sort >"$WORK/fake.$v"
+  check "$v: real tools and fake adb agree ($(awk 'END { print NR }' "$WORK/real.$v") lines)" cmp -s "$WORK/real.$v" "$WORK/fake.$v"
+done
+check "fake adb received no unknown commands here" sh -c '[ ! -s "$1/xstate/unknown" ]' _ "$WORK"
+q=$(HOME="$WORK" bash -c '. "$1"; fs_q "$2"' _ "$FEATURE" "$T/sdcard/Download/Mum's game.apk")
+out=$(dash -c "rm -f $q && [ ! -e $q ] && echo FS_GONE")
+check "delete command quotes a name with an apostrophe correctly" sh -c '[ "$1" = FS_GONE ] && [ ! -e "$2" ] && [ -e "$3" ]' _ "$out" "$T/sdcard/Download/Mum's game.apk" "$T/sdcard/Download/Some App (1).apk"
+q=$(HOME="$WORK" bash -c '. "$1"; fs_q "$2"' _ "$FEATURE" "$T/sdcard/Android/data/com.old.game")
+out=$(dash -c "rm -rf $q && [ ! -e $q ] && echo FS_GONE")
+check "folder delete removes only that folder" sh -c '[ "$1" = FS_GONE ] && [ ! -e "$2/com.old.game" ] && [ -e "$2/com.example.uninstalled" ]' _ "$out" "$T/sdcard/Android/data"
 
 # ------------------------------------------------------------------------------------------
 echo
