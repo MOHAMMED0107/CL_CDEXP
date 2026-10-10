@@ -10,6 +10,10 @@
 #   Plug in, unlock the phone and tap "Allow" on the USB debugging prompt.
 set -u
 
+# Windows Git Bash rewrites arguments that start with "/" (e.g. /sdcard -> C:/Program Files/Git/sdcard)
+# before passing them to adb.exe. Turn that off so phone paths reach the phone unchanged.
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
+
 LOG="$HOME/phone-pro-removed.txt"         # apps removed by option 9, so option 10 can restore them
 BATLOG="$HOME/phone-pro-battery-log.csv"  # one line per run of option 13
 
